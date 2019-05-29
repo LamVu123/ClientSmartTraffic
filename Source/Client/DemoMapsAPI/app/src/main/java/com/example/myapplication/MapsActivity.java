@@ -1,61 +1,61 @@
- package com.example.myapplication;
+package com.example.myapplication;
 
- import android.Manifest;
- import android.app.AlertDialog;
- import android.app.ProgressDialog;
- import android.content.DialogInterface;
- import android.content.Intent;
- import android.content.pm.PackageManager;
- import android.graphics.Color;
- import android.location.Location;
- import android.location.LocationListener;
- import android.location.LocationManager;
- import android.os.Build;
- import android.os.Bundle;
- import android.os.Process;
- import android.provider.Settings;
- import android.support.annotation.NonNull;
- import android.support.v4.app.ActivityCompat;
- import android.support.v4.app.FragmentActivity;
- import android.util.Log;
- import android.view.View;
- import android.widget.Button;
- import android.widget.EditText;
- import android.widget.TextView;
- import android.widget.Toast;
+import android.Manifest;
+import android.app.AlertDialog;
+import android.app.ProgressDialog;
+import android.content.DialogInterface;
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.graphics.Color;
+import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
+import android.os.Build;
+import android.os.Bundle;
+import android.os.Process;
+import android.provider.Settings;
+import android.support.annotation.NonNull;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.app.FragmentActivity;
+import android.util.Log;
+import android.view.View;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.TextView;
+import android.widget.Toast;
 
- import com.google.android.gms.maps.CameraUpdate;
- import com.google.android.gms.maps.CameraUpdateFactory;
- import com.google.android.gms.maps.GoogleMap;
- import com.google.android.gms.maps.OnMapReadyCallback;
- import com.google.android.gms.maps.SupportMapFragment;
- import com.google.android.gms.maps.model.BitmapDescriptorFactory;
- import com.google.android.gms.maps.model.LatLng;
- import com.google.android.gms.maps.model.Marker;
- import com.google.android.gms.maps.model.MarkerOptions;
- import com.google.android.gms.maps.model.Polyline;
- import com.google.android.gms.maps.model.PolylineOptions;
+import com.google.android.gms.maps.CameraUpdate;
+import com.google.android.gms.maps.CameraUpdateFactory;
+import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.OnMapReadyCallback;
+import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
+import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
+import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.maps.model.Polyline;
+import com.google.android.gms.maps.model.PolylineOptions;
 
- import java.io.UnsupportedEncodingException;
- import java.util.ArrayList;
- import java.util.List;
+import java.io.UnsupportedEncodingException;
+import java.util.ArrayList;
+import java.util.List;
 
- import Modules.*;
+import Modules.*;
 
- public class MapsActivity extends FragmentActivity implements OnMapReadyCallback,DirectionFinderListener {
+public class MapsActivity extends FragmentActivity implements OnMapReadyCallback, DirectionFinderListener {
 
     private GoogleMap mMap;
     private static final int REQUEST_CODE = 0;
     private static final String TAG = "MapsActivity";
     public static LatLng currentLocation;
-     private Button btnFindPath;
-     private Button btnAcc;
-     private EditText etOrigin;
-     private EditText etDestination;
-     private List<Marker> originMarkers = new ArrayList<>();
-     private List<Marker> destinationMarkers = new ArrayList<>();
-     private List<Polyline> polylinePaths = new ArrayList<>();
-     private ProgressDialog progressDialog;
+    private Button btnFindPath;
+    private Button btnAcc;
+    private EditText etOrigin;
+    private EditText etDestination;
+    private List<Marker> originMarkers = new ArrayList<>();
+    private List<Marker> destinationMarkers = new ArrayList<>();
+    private List<Polyline> polylinePaths = new ArrayList<>();
+    private ProgressDialog progressDialog;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -91,7 +91,7 @@
                 AlertDialog.Builder alert = new AlertDialog.Builder(MapsActivity.this);
                 alert.setTitle("Smart Traffic");
                 alert.setMessage("Hiện thị đồ thị realtime - ku Trí");
-                alert.setPositiveButton("OK",null);
+                alert.setPositiveButton("OK", null);
                 alert.show();
             }
         });
@@ -135,7 +135,6 @@
             builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
                 @Override
                 public void onClick(DialogInterface dialogInterface, int i) {
-                    //Toast.makeText(MainActivity.this, "mess", Toast.LENGTH_SHORT).show();
                     startActivityForResult(new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)
                             , 0);
                 }
@@ -143,7 +142,6 @@
             builder.setNegativeButton("Exit", new DialogInterface.OnClickListener() {
                 @Override
                 public void onClick(DialogInterface dialogInterface, int i) {
-                    //dialogInterface.dismiss();
                     Process.killProcess(Process.myPid());
                     System.exit(1);
                 }
@@ -208,14 +206,14 @@
         // Add a marker in Sydney and move the camera
         LatLng fptUniLocal = new LatLng(21.013138, 105.526876);
         mMap.addMarker(new MarkerOptions().position(fptUniLocal).title("Marker in FPT University"));
-        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(fptUniLocal,15));
+        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(fptUniLocal, 15));
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
                 && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             return;
         }
         mMap.setMyLocationEnabled(true);
-        if(currentLocation !=null) {
-            CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(currentLocation,15);
+        if (currentLocation != null) {
+            CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(currentLocation, 15);
             mMap.animateCamera(cameraUpdate);
         }
     }
@@ -259,42 +257,42 @@
         }
 
         if (polylinePaths != null) {
-            for (Polyline polyline:polylinePaths ) {
+            for (Polyline polyline : polylinePaths) {
                 polyline.remove();
             }
         }
     }
 
-     @Override
-     public void onDirectionFinderSuccess(List<Route> routes) {
-         progressDialog.dismiss();
-         polylinePaths = new ArrayList<>();
-         originMarkers = new ArrayList<>();
-         destinationMarkers = new ArrayList<>();
+    @Override
+    public void onDirectionFinderSuccess(List<Route> routes) {
+        progressDialog.dismiss();
+        polylinePaths = new ArrayList<>();
+        originMarkers = new ArrayList<>();
+        destinationMarkers = new ArrayList<>();
 
-         for (Route route : routes) {
-             mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(route.startLocation, 15));
-             ((TextView) findViewById(R.id.tvDuration)).setText(route.duration.text);
-             ((TextView) findViewById(R.id.tvDistance)).setText(route.distance.text);
+        for (Route route : routes) {
+            mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(route.startLocation, 15));
+            ((TextView) findViewById(R.id.tvDuration)).setText(route.duration.text);
+            ((TextView) findViewById(R.id.tvDistance)).setText(route.distance.text);
 
-             originMarkers.add(mMap.addMarker(new MarkerOptions()
-                     .icon(BitmapDescriptorFactory.fromResource(R.drawable.start_blue))
-                     .title(route.startAddress)
-                     .position(route.startLocation)));
-             destinationMarkers.add(mMap.addMarker(new MarkerOptions()
-                     .icon(BitmapDescriptorFactory.fromResource(R.drawable.end_green))
-                     .title(route.endAddress)
-                     .position(route.endLocation)));
+            originMarkers.add(mMap.addMarker(new MarkerOptions()
+                    .icon(BitmapDescriptorFactory.fromResource(R.drawable.start_blue))
+                    .title(route.startAddress)
+                    .position(route.startLocation)));
+            destinationMarkers.add(mMap.addMarker(new MarkerOptions()
+                    .icon(BitmapDescriptorFactory.fromResource(R.drawable.end_green))
+                    .title(route.endAddress)
+                    .position(route.endLocation)));
 
-             PolylineOptions polylineOptions = new PolylineOptions().
-                     geodesic(true).
-                     color(Color.BLUE).
-                     width(10);
+            PolylineOptions polylineOptions = new PolylineOptions().
+                    geodesic(true).
+                    color(Color.BLUE).
+                    width(10);
 
-             for (int i = 0; i < route.points.size(); i++)
-                 polylineOptions.add(route.points.get(i));
+            for (int i = 0; i < route.points.size(); i++)
+                polylineOptions.add(route.points.get(i));
 
-             polylinePaths.add(mMap.addPolyline(polylineOptions));
-         }
-     }
+            polylinePaths.add(mMap.addPolyline(polylineOptions));
+        }
+    }
 }

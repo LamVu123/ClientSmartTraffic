@@ -1,0 +1,7 @@
+ip: 35.198.246.69
+
+user: yoyoplayer1412_gmail_com
+ssh
+
+user: root
+pass: dunglh

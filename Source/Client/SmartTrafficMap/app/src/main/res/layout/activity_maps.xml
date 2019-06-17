@@ -73,6 +73,13 @@
             android:text="0 min"
             android:id="@+id/tvDuration" />
 
+        <Button
+            android:id="@+id/btnSentServer"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Sent" />
+
     </LinearLayout>
 
 

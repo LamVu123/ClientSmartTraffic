@@ -23,6 +23,7 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.github.nkzawa.emitter.Emitter;
 import com.google.android.gms.maps.CameraUpdate;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
@@ -36,8 +37,15 @@ import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
 
 import java.io.UnsupportedEncodingException;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
+
+import com.github.nkzawa.socketio.client.IO;
+import com.github.nkzawa.socketio.client.Socket;
+
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import Modules.*;
 
@@ -47,6 +55,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private static final int REQUEST_CODE = 0;
     private static final String TAG = "MapsActivity";
     public static LatLng currentLocation;
+    private Button btnSentServer;
     private Button btnFindPath;
     private Button btnAcc;
     private EditText etOrigin;
@@ -55,6 +64,15 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private List<Marker> destinationMarkers = new ArrayList<>();
     private List<Polyline> polylinePaths = new ArrayList<>();
     private ProgressDialog progressDialog;
+
+    //cuongvv start
+    private Socket mSocket;
+    {
+        try {
+            mSocket = IO.socket("http://192.168.52.2:3000");
+        } catch (URISyntaxException e) {}
+    }
+    //cuongvv end
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -72,10 +90,22 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             getCurrentLocation();
         }
 
+        btnSentServer = (Button) findViewById(R.id.btnSentServer);
         btnFindPath = (Button) findViewById(R.id.btnFindPath);
         btnAcc = (Button) findViewById(R.id.btnAcc);
         etOrigin = (EditText) findViewById(R.id.etOrigin);
         etDestination = (EditText) findViewById(R.id.etDestination);
+
+        //cuongvv start
+        mSocket.connect();
+        btnSentServer.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                mSocket.emit("ServerDemo","Hello Server");
+            }
+        });
+        mSocket.on("dataResults",onMessage_Results);
+        //cuongvv end
 
         btnFindPath.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -95,6 +125,27 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             }
         });
     }
+
+//cuongvv start
+    private Emitter.Listener onMessage_Results = new Emitter.Listener() {
+        @Override
+        public void call(final Object... args) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    JSONObject data = (JSONObject) args[0];
+                    String table;
+                    try{
+                        table = data.getString("table");
+                        Toast.makeText(getApplicationContext(),table,Toast.LENGTH_SHORT).show();
+                    }catch(JSONException e){
+                        return;
+                    }
+                }
+            });
+        }
+    };
+    //cuongvv end
 
     //set permission to access location and getCurrentLocation
     private void setPermission() {

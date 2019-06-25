@@ -5,29 +5,95 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     tools:context=".MainActivity">
-    <LinearLayout android:layout_marginLeft="25dp">
+    <LinearLayout>
+
+        <TextView
+            android:id="@+id/textView_user_info"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="TextView" />
+
         <Button
-            android:text="Resume"
+            android:id="@+id/btn_finish"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/btn_finish" />
+    </LinearLayout>
+    <LinearLayout>
+
+
+        <Button
+            android:id="@+id/btn_shock_point"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/btn_shock_point" />
+
+        <Button
+            android:id="@+id/btn_speed_up"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/btn_speed_up" />
+
+        <Button
+            android:id="@+id/btn_brake_down"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/btn_brake_down" />
+
+        <Button
+            android:id="@+id/btn_parking"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/btn_parking" />
+    </LinearLayout>
+
+    <LinearLayout>
+
+        <TextView
+            android:id="@+id/textView_speed_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/textView_speed_label" />
+
+        <Spinner
+            android:id="@+id/spinner_speed"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1" />
+    </LinearLayout>
+
+    <LinearLayout>
+
+        <Button
             android:id="@+id/resume"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"/>
+            android:layout_height="wrap_content"
+            android:text="Resume" />
+
         <Button
-            android:text="Stop"
             android:id="@+id/stop"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            />
+            android:text="Stop" />
+
+        <!--<Button-->
+        <!--android:id="@+id/save"-->
+        <!--android:layout_width="wrap_content"-->
+        <!--android:layout_height="wrap_content"-->
+        <!--android:text="Save" />-->
+
         <Button
-            android:text="Save"
-            android:id="@+id/save"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"/>
-        <Button
-            android:text="Open"
             android:id="@+id/open"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"/>
-
+            android:layout_height="wrap_content"
+            android:text="Open" />
 
 
     </LinearLayout>

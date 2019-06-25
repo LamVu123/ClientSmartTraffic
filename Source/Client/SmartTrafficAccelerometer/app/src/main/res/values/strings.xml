@@ -1,3 +1,22 @@
 <resources>
     <string name="app_name">SmartTraffic</string>
+    <string name="hint_editText_name">Enter name</string>
+    <string name="hint_editText_road">Enter road</string>
+    <string name="text_btn_start">Start</string>
+    <string name="btn_shock_point">Shock Point</string>
+    <string name="btn_speed_up">Speed Up</string>
+    <string name="btn_brake_down">Brake Down</string>
+    <string name="btn_parking">Parking</string>
+    <string name="textView_speed_label">Speed</string>
+    <string name="btn_finish">Finish</string>
+    <string-array name="speeds_array">
+        <item>50km/h</item>
+        <item>60km/h</item>
+        <item>70km/h</item>
+        <item>80km/h</item>
+        <item>90km/h</item>
+        <item>100km/h</item>
+        <item>110km/h</item>
+        <item>120km/h</item>
+    </string-array>
 </resources>

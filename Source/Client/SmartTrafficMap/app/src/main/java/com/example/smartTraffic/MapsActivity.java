@@ -49,12 +49,15 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     public static LatLng currentLocation;
     private Button btnFindPath;
     private Button btnAcc;
+    private Button btnRoadName;
     private EditText etOrigin;
     private EditText etDestination;
     private List<Marker> originMarkers = new ArrayList<>();
     private List<Marker> destinationMarkers = new ArrayList<>();
     private List<Polyline> polylinePaths = new ArrayList<>();
     private ProgressDialog progressDialog;
+    private String currentCoordinate;
+    private String currentRoad;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -74,6 +77,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         btnFindPath = (Button) findViewById(R.id.btnFindPath);
         btnAcc = (Button) findViewById(R.id.btnAcc);
+        btnRoadName = (Button) findViewById(R.id.btnRoadName);
         etOrigin = (EditText) findViewById(R.id.etOrigin);
         etDestination = (EditText) findViewById(R.id.etDestination);
 
@@ -92,6 +96,12 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 alert.setMessage("Hiện thị đồ thị realtime - ku Trí");
                 alert.setPositiveButton("OK", null);
                 alert.show();
+            }
+        });
+        btnRoadName.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+
             }
         });
     }
@@ -158,7 +168,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             public void onLocationChanged(Location location) {
                 currentLocation = new LatLng(location.getLatitude(), location.getLongitude());
                 //Log.d(TAG, "onLocateChange: "+ currentLocation);
-                Toast.makeText(MapsActivity.this, "kinh độ - vĩ độ: " + currentLocation.toString(), Toast.LENGTH_LONG).show();
+                //Toast.makeText(MapsActivity.this, "kinh độ - vĩ độ: " + currentLocation.toString(), Toast.LENGTH_LONG).show();
+                currentCoordinate = currentLocation.toString();
             }
 
             @Override

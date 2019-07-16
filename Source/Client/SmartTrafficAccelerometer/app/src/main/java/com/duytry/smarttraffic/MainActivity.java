@@ -54,7 +54,7 @@ import java.util.Queue;
 
 public class MainActivity extends AppCompatActivity implements SensorEventListener {
     private Queue dataExample;
-    private static final int NUM_OF_ENTRY = 500;
+    private static final int NUM_OF_ENTRY = 1000;
     private static final String DATE_FORMAT = "yyyyMMddhhmmss";
     private static final String TAG = "MainActivity";
     private static final int MESSAGE_REQUEST = 01;
@@ -65,10 +65,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private int mVisibleXRangeMaximum = 600;
     private SensorManager sensorManager;
     private Sensor accelerometer;
-    //    TextView xValue, yValue, zValue;
     private LineChart mChartX, mChartY, mChartZ;
-    private Thread threadX, threadY, threadZ;
-    private boolean plotDataX, plotDataY, plotDataZ = true;
+    private boolean isRunning = true;
     private boolean onLoadFile = false;
     private int idLoadFile = 0;
     Intent myFileIntent;
@@ -86,6 +84,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private View.OnClickListener saveShockPointListener, saveSpeedUpListener, saveBrakeDownListener, saveParkingListener;
     private SharedPreferences userInformation;
     SimpleDateFormat simpleDateFormat;
+
+//    Date startDate;
 
     @Override
     protected void onCreate(final Bundle savedInstanceState) {
@@ -121,10 +121,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         //init graph
         initChart();
 
-        startPlotX();
-        startPlotY();
-        startPlotZ();
-
+//        startDate = new Date();
     }
 
     /**
@@ -137,16 +134,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             @Override
             public void onClick(View v) {
                 Log.d(TAG, "Button Stop clicked");
-                if (threadX != null) {
-                    threadX.interrupt();
-                }
-                if (threadY != null) {
-                    threadY.interrupt();
-                }
-                if (threadZ != null) {
-                    threadZ.interrupt();
-                }
                 sensorManager.unregisterListener(MainActivity.this);
+                isRunning = false;
             }
         };
         btnStop.setOnClickListener(stopListener);
@@ -158,6 +147,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             public void onClick(View v) {
                 Log.d(TAG, "Button Resume clicked");
                 sensorManager.registerListener(MainActivity.this, accelerometer, SensorManager.SENSOR_DELAY_GAME);
+                isRunning = true;
             }
         };
         btnResume.setOnClickListener(resumeListener);
@@ -189,15 +179,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             @Override
             public void onClick(View v) {
                 Log.d(TAG, "Button Open clicked");
-                if (threadX != null) {
-                    threadX.interrupt();
-                }
-                if (threadY != null) {
-                    threadY.interrupt();
-                }
-                if (threadZ != null) {
-                    threadZ.interrupt();
-                }
                 sensorManager.unregisterListener(MainActivity.this);
                 loadData();
             }
@@ -421,15 +402,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         intent.setType("text/*");
         intent.addCategory(Intent.CATEGORY_OPENABLE);
         startActivityForResult(intent, CHOOSE_FILE_MESS_CODE);
-        if (threadX != null) {
-            threadX.interrupt();
-        }
-        if (threadY != null) {
-            threadY.interrupt();
-        }
-        if (threadZ != null) {
-            threadZ.interrupt();
-        }
         sensorManager.unregisterListener(MainActivity.this);
 
     }
@@ -443,16 +415,12 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 set = createSet(Color.BLUE);
                 data.addDataSet(set);
             }
-//            Log.d(TAG, "addEndtry: " + event.values[0] + 5 +" " + event.values[1]+5);
-//            data.addEntry(new Entry(set.getEntryCount()));
             data.addEntry(new Entry(set.getEntryCount(), event.values[1] + 5), 0);
             data.notifyDataChanged();
             mChartY.getDescription().setText("y: " + event.values[1]);
             mChartY.notifyDataSetChanged();
             mChartY.setVisibleXRangeMaximum(mVisibleXRangeMaximum);
             mChartY.moveViewToX(data.getEntryCount());
-//            mChart.setData(data);
-//            mChart.invalidate();
         }
     }
 
@@ -464,8 +432,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 set = createSet(Color.GREEN);
                 data.addDataSet(set);
             }
-            // Log.d(TAG, "addEndtry: " + set.getEntryCount());
-//            data.addEntry(new Entry(set.getEntryCount()));
             data.addEntry(new Entry(set.getEntryCount(), event.values[2] + 5), 0);
             data.notifyDataChanged();
             mChartZ.getDescription().setText("z: " + event.values[2]);
@@ -473,8 +439,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             mChartZ.setVisibleXRangeMaximum(mVisibleXRangeMaximum);
             mChartZ.moveViewToX(data.getEntryCount());
 
-//            mChart.setData(data);
-//            mChart.invalidate();
         }
     }
 
@@ -489,66 +453,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         set.setMode(LineDataSet.Mode.CUBIC_BEZIER);
         set.setCubicIntensity(0.2f);
         return set;
-    }
-
-    private void startPlotX() {
-        if (threadX != null) {
-            threadX.interrupt();
-        }
-        threadX = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                while (true) {
-                    plotDataX = true;
-                    try {
-                        Thread.sleep(10);
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
-                }
-            }
-        });
-        threadX.start();
-    }
-
-    private void startPlotY() {
-        if (threadY != null) {
-            threadY.interrupt();
-        }
-        threadY = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                while (true) {
-                    plotDataY = true;
-                    try {
-                        Thread.sleep(10);
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
-                }
-            }
-        });
-        threadY.start();
-    }
-
-    private void startPlotZ() {
-        if (threadZ != null) {
-            threadZ.interrupt();
-        }
-        threadZ = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                while (true) {
-                    plotDataZ = true;
-                    try {
-                        Thread.sleep(10);
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
-                }
-            }
-        });
-        threadZ.start();
     }
 
     private void openSaveActivity() {
@@ -618,6 +522,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
      * @param action
      */
     private void saveData(String action){
+//        Date clickTime = new Date();
+//        long time = clickTime.getTime() - startDate.getTime();
         String speed = spinnerSpeed.getSelectedItem().toString();
         if(TextUtils.isEmpty(speed)){
             speed = Common.UNDEFINED;
@@ -640,7 +546,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             LineData yData = mChartY.getData();
             LineData zData = mChartZ.getData();
 
-
             int minEntryCount = Math.min(xData.getEntryCount(), yData.getEntryCount());
             minEntryCount = Math.min(minEntryCount, zData.getEntryCount());
             int minCount = Math.min(minEntryCount, NUM_OF_ENTRY);
@@ -650,7 +555,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             dos.writeChars(String.valueOf(minCount));
 
             dos.writeChar(';');
-//            Log.d(TAG, "onActivityResult: " + xData.getEntryCount() + " " + yData.getEntryCount() + " " + zData.getEntryCount());
             for (int i = xData.getEntryCount(); i > xData.getEntryCount() - minCount; i--) {
                 float xValue = (float) (xData.getDataSetByIndex(0).getEntryForIndex(i - 1).getY() - 5);
                 String xStrValue = df.format(xValue);
@@ -674,7 +578,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             }
             fos.close();
             Log.d(TAG, "Saved data to filename: " + fileName);
-            Toast.makeText(this, "Saved with " + minCount + " " + dem, Toast.LENGTH_LONG).show();
+//            Toast.makeText(this, "Saved with " + minCount + " " + time + " //" + time/minCount, Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "Saved with resolution " + minCount, Toast.LENGTH_LONG).show();
         } catch (FileNotFoundException e) {
             Toast.makeText(this, Common.ERROR_MESSAGE, Toast.LENGTH_LONG).show();
             e.printStackTrace();
@@ -684,94 +589,13 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         }
     }
 
-
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent intentData) {
         switch (requestCode) {
-//            case MESSAGE_REQUEST:
-//                if (resultCode == RESULT_OK) {
-//
-//                    if (threadX != null) {
-//                        threadX.interrupt();
-//                    }
-//                    if (threadY != null) {
-//                        threadY.interrupt();
-//                    }
-//                    if (threadZ != null) {
-//                        threadZ.interrupt();
-//                    }
-//                    sensorManager.unregisterListener(MainActivity.this);
-//
-//
-//                    String fileNameFromMessage = intentData.getStringExtra("name");
-//                    Log.d(TAG, "onActivityResult: file name: " + fileNameFromMessage);
-//                    fileNameFromMessage += ".txt";
-//                    FileOutputStream fos = null;
-//
-//                    try {
-//                        File file = new File(Environment.getExternalStorageDirectory().getAbsolutePath(), fileNameFromMessage);
-//                        fos = new FileOutputStream(file);
-//                        DataOutputStream dos = new DataOutputStream(fos);
-//                        LineData xData = mChartX.getData();
-//                        LineData yData = mChartY.getData();
-//                        LineData zData = mChartZ.getData();
-//
-//
-//                        int minEntryCount = Math.min(xData.getEntryCount(), yData.getEntryCount());
-//                        minEntryCount = Math.min(minEntryCount, zData.getEntryCount());
-//                        int minCount = Math.min(minEntryCount, NUM_OF_ENTRY);
-//                        DecimalFormat df = new DecimalFormat("0.0000");
-//
-//                        int dem = 1;
-//                        dos.writeChars(String.valueOf(minCount));
-//
-//                        dos.writeChar(';');
-//                        Log.d(TAG, "onActivityResult: " + xData.getEntryCount() + " " + yData.getEntryCount() + " " + zData.getEntryCount());
-//                        for (int i = xData.getEntryCount(); i > xData.getEntryCount() - minCount; i--) {
-//                            float xValue = (float) (xData.getDataSetByIndex(0).getEntryForIndex(i - 1).getY() - 5);
-//                            String xStrValue = df.format(xValue);
-//                            Log.d(TAG, "onActivityResult: " + xStrValue);
-//                            dos.writeChars(xStrValue);
-//                            dos.writeChar(';');
-//                            dem++;
-//                        }
-//                        for (int i = yData.getEntryCount(); i > yData.getEntryCount() - minCount; i--) {
-//                            float yValue = (float) (yData.getDataSetByIndex(0).getEntryForIndex(i - 1).getY() - 5);
-//                            String yStrValue = df.format(yValue);
-//                            dos.writeChars(yStrValue);
-//                            dos.writeChar(';');
-//                            dem++;
-//                        }
-//                        for (int i = zData.getEntryCount(); i > zData.getEntryCount() - minCount; i--) {
-//                            float zValue = (float) (zData.getDataSetByIndex(0).getEntryForIndex(i - 1).getY() - 5);
-//                            String zStrValue = df.format(zValue);
-//                            dos.writeChars(zStrValue);
-//                            dos.writeChar(';');
-//                            dem++;
-//                        }
-//                        fos.close();
-//                        Toast.makeText(this, "Saved with " + minCount + " " + dem, Toast.LENGTH_LONG).show();
-//                    } catch (FileNotFoundException e) {
-//                        Toast.makeText(this, "Found", Toast.LENGTH_LONG).show();
-//                        e.printStackTrace();
-//                    } catch (IOException e) {
-//                        Toast.makeText(this, "Found2", Toast.LENGTH_LONG).show();
-//                        e.printStackTrace();
-//                    }
-//                }
-//                break;
             case CHOOSE_FILE_MESS_CODE:
                 if (resultCode == RESULT_OK) {
-                    if (threadX != null) {
-                        threadX.interrupt();
-                    }
-                    if (threadY != null) {
-                        threadY.interrupt();
-                    }
-                    if (threadZ != null) {
-                        threadZ.interrupt();
-                    }
                     sensorManager.unregisterListener(MainActivity.this);
+                    isRunning = false;
                     if (intentData != null) {
                         Uri uri = intentData.getData();
                         String fileName = uri.getLastPathSegment().toString();
@@ -797,7 +621,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                                 }
                                 fis.close();
                             }
-//                            Log.d(TAG, "onActivityResult: " + sb.toString());
                             String sbLast = "";
                             for (i = 0; i < sb.length(); i++) {
                                 if ((sb.charAt(i) >= '0' && sb.charAt(i) <= '9')
@@ -827,12 +650,10 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                                     dataX.addDataSet(set);
                                 }
                                 Log.d(TAG, "addEndtry: " + set.getEntryCount());
-//                                data.addEntry(new Entry(set.getEntryCount()));
 
                                 for (i = 1; i <= num; i++) {
                                     dataX.addEntry(new Entry(set.getEntryCount(), floatArr[i]+5), 0);
                                     dataX.notifyDataChanged();
-//                mChartX.getDescription().setText("x: "+ event.values[0]);
                                     mChartX.notifyDataSetChanged();
                                     mChartX.setVisibleXRangeMaximum(mVisibleXRangeMaximum);
                                     mChartX.moveViewToX(dataX.getEntryCount());
@@ -847,12 +668,10 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                                     dataY.addDataSet(set);
                                 }
                                 Log.d(TAG, "addEndtry: " + set.getEntryCount());
-//                                data.addEntry(new Entry(set.getEntryCount()));
 
                                 for (i = (num+1); i <= (num*2) ; i++) {
                                     dataY.addEntry(new Entry(set.getEntryCount(), floatArr[i]+5), 0);
                                     dataY.notifyDataChanged();
-//                mChartX.getDescription().setText("x: "+ event.values[0]);
                                     mChartY.notifyDataSetChanged();
                                     mChartY.setVisibleXRangeMaximum(mVisibleXRangeMaximum);
                                     mChartY.moveViewToX(dataY.getEntryCount());
@@ -867,23 +686,15 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                                     dataZ.addDataSet(set);
                                 }
                                 Log.d(TAG, "addEndtry: " + set.getEntryCount());
-//                                data.addEntry(new Entry(set.getEntryCount()));
 
                                 for (i = (num*2+1); i <= num*3; i++) {
                                     dataZ.addEntry(new Entry(set.getEntryCount(), floatArr[i]+5), 0);
                                     dataZ.notifyDataChanged();
-//                mChartX.getDescription().setText("x: "+ event.values[0]);
                                     mChartZ.notifyDataSetChanged();
                                     mChartZ.setVisibleXRangeMaximum(mVisibleXRangeMaximum);
                                     mChartZ.moveViewToX(dataZ.getEntryCount());
                                 }
                             }
-
-
-//                            for (i=0; i<floatArr.length;i++){
-//                                Log.d(TAG, "onActivityResult: "+ i);
-//                            }
-
 
                             }catch(IOException e){
                                 e.printStackTrace();
@@ -892,10 +703,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
                         }
                     }
-
                     break;
-
-
                 }
         }
 
@@ -907,39 +715,16 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
         @Override
         public final void onSensorChanged (SensorEvent sensorEvent){
-
-            if (plotDataX) {
-
-//            Log.d(TAG, "onSensorChanged: "+ sensorEvent.values[0] + " " + sensorEvent.values[1] +" " + sensorEvent.values[2]);
+            if(isRunning){
                 addEndtryX(sensorEvent);
-                plotDataX = false;
-            }
-            if (plotDataY) {
-//            Log.d(TAG, "onSensorChanged: "+ sensorEvent.values[0] + " " + sensorEvent.values[1] +" " + sensorEvent.values[2]);
                 addEndtryY(sensorEvent);
-                plotDataY = false;
-            }
-            if (plotDataZ) {
-//            Log.d(TAG, "onSensorChanged: "+ sensorEvent.values[0] + " " + sensorEvent.values[1] +" " + sensorEvent.values[2]);
                 addEndtryZ(sensorEvent);
-                plotDataZ = false;
             }
-
-
         }
 
         @Override
         protected void onPause () {
             super.onPause();
-            if (threadX != null) {
-                threadX.interrupt();
-            }
-            if (threadY != null) {
-                threadY.interrupt();
-            }
-            if (threadZ != null) {
-                threadZ.interrupt();
-            }
             sensorManager.unregisterListener(this);
         }
 
@@ -947,9 +732,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         @Override
         protected void onDestroy () {
             sensorManager.unregisterListener(MainActivity.this);
-            threadX.interrupt();
-            threadY.interrupt();
-            threadZ.interrupt();
             super.onDestroy();
         }
 

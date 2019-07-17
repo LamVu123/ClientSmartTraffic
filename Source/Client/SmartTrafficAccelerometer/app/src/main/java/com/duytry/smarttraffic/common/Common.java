@@ -17,6 +17,7 @@ public final class Common {
 //    public static final String SLASH = "/";
     public static final String DASH_CHARACTER = "-";
     public static final String SPACE_CHARACTER = " ";
+    public static final String SEMICOLON_CHARACTER = ";";
     public static final String FILENAME_DIRECTORY = "accelerometer_data";
 
     public static final String FILENAME_EXTENSION = ".txt";

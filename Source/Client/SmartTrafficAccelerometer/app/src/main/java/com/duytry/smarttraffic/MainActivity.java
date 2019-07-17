@@ -1,7 +1,9 @@
 package com.duytry.smarttraffic;
 
 import android.Manifest;
+import android.app.AlertDialog;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
@@ -10,11 +12,18 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
+import android.os.Process;
+import android.provider.Settings;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.text.TextUtils;
@@ -28,6 +37,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.duytry.smarttraffic.common.Common;
+import com.duytry.smarttraffic.entity.MyLocation;
 import com.github.mikephil.charting.charts.LineChart;
 import com.github.mikephil.charting.components.Legend;
 import com.github.mikephil.charting.components.XAxis;
@@ -38,15 +48,18 @@ import com.github.mikephil.charting.data.LineDataSet;
 import com.github.mikephil.charting.interfaces.datasets.ILineDataSet;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.Queue;
@@ -54,6 +67,8 @@ import java.util.Queue;
 
 public class MainActivity extends AppCompatActivity implements SensorEventListener {
     private Queue dataExample;
+    private static final int REQUEST_PERMISSION_REQUEST_CODE = 1000;
+    private static final int INITIAL_REQUEST=1337;
     private static final int NUM_OF_ENTRY = 1000;
     private static final String DATE_FORMAT = "yyyyMMddhhmmss";
     private static final String TAG = "MainActivity";
@@ -70,6 +85,11 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private boolean onLoadFile = false;
     private int idLoadFile = 0;
     Intent myFileIntent;
+    private static ArrayList<MyLocation> locationData;
+    private static ArrayList<String> timeData;
+    private static double longitude;
+    private static double latitude;
+
 
     private static String dataDirectory;
 
@@ -85,6 +105,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private SharedPreferences userInformation;
     SimpleDateFormat simpleDateFormat;
 
+
 //    Date startDate;
 
     @Override
@@ -93,14 +114,19 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         setContentView(R.layout.activity_main);
 
         //request permission
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) !=
-                PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1000);
+        String[] PERMISSIONS = {
+                Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                Manifest.permission.READ_EXTERNAL_STORAGE,
+                Manifest.permission.ACCESS_FINE_LOCATION
+        };
+
+        if(!hasPermissions(this, PERMISSIONS)){
+            ActivityCompat.requestPermissions(this, PERMISSIONS, REQUEST_PERMISSION_REQUEST_CODE);
         }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) !=
-                PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, 1000);
-        }
+
+        //turn on GPS
+        turnOnGPS();
+        getCurrentLocation();
 
         //get sensor
         sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
@@ -120,6 +146,9 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
         //init graph
         initChart();
+
+        locationData = new ArrayList<>();
+        timeData = new ArrayList<>();
 
 //        startDate = new Date();
     }
@@ -157,15 +186,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 //        saveListener = new View.OnClickListener() {
 //            @Override
 //            public void onClick(View v) {
-//                if (threadX != null) {
-//                    threadX.interrupt();
-//                }
-//                if (threadY != null) {
-//                    threadY.interrupt();
-//                }
-//                if (threadZ != null) {
-//                    threadZ.interrupt();
-//                }
 //                sensorManager.unregisterListener(MainActivity.this);
 //                openSaveActivity();
 //                sensorManager.registerListener(MainActivity.this, accelerometer, SensorManager.SENSOR_DELAY_GAME);
@@ -373,30 +393,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         mChartZ.setDrawBorders(false);
     }
 
-    private void addEndtryX(SensorEvent event) {
-
-        LineData data = mChartX.getData();
-        if (data != null) {
-            ILineDataSet set = data.getDataSetByIndex(0);
-            if (set == null) {
-                set = createSet(Color.RED);
-                data.addDataSet(set);
-            }
-            // Log.d(TAG, "addEndtry: " + set.getEntryCount());
-//            data.addEntry(new Entry(set.getEntryCount()));
-
-            Entry entry = new Entry(set.getEntryCount(), event.values[0] + 5);
-            data.addEntry(entry, 0);
-            LineData tmpData = mChartX.getData();
-
-            data.notifyDataChanged();
-            mChartX.getDescription().setText("x: " + event.values[0]);
-            mChartX.notifyDataSetChanged();
-            mChartX.setVisibleXRangeMaximum(mVisibleXRangeMaximum);
-            mChartX.moveViewToX(data.getEntryCount());
-        }
-    }
-
     private void loadData() {
         Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
         intent.setType("text/*");
@@ -406,40 +402,86 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     }
 
+    /**
+     * add data to graph viewer
+     * @param event
+     * @param axe
+     */
+    private void addEndtry(SensorEvent event, int axe) {
+        LineChart mchart = null;
+        switch (axe){
+            case 0: mchart = mChartX;
+                break;
+            case 1: mchart = mChartY;
+                break;
+            case 2: mchart = mChartZ;
+                break;
+            default: break;
+        }
 
-    private void addEndtryY(SensorEvent event) {
-        LineData data = mChartY.getData();
+        LineData data = mchart.getData();
         if (data != null) {
             ILineDataSet set = data.getDataSetByIndex(0);
             if (set == null) {
-                set = createSet(Color.BLUE);
+                switch (axe){
+                    case 0: set = createSet(Color.RED);
+                        break;
+                    case 1: set = createSet(Color.BLUE);
+                        break;
+                    case 2: set = createSet(Color.GREEN);
+                        break;
+                    default: break;
+                }
                 data.addDataSet(set);
             }
-            data.addEntry(new Entry(set.getEntryCount(), event.values[1] + 5), 0);
+
+            Entry entry = new Entry(set.getEntryCount(), event.values[axe] + 5);
+            data.addEntry(entry, 0);
+            LineData tmpData = mchart.getData();
+
             data.notifyDataChanged();
-            mChartY.getDescription().setText("y: " + event.values[1]);
-            mChartY.notifyDataSetChanged();
-            mChartY.setVisibleXRangeMaximum(mVisibleXRangeMaximum);
-            mChartY.moveViewToX(data.getEntryCount());
+            String description = "";
+            switch (axe){
+                case 0: description = "x: ";
+                    break;
+                case 1: description = "y: ";
+                    break;
+                case 2: description = "z: ";
+                    break;
+                default: break;
+            }
+            mchart.getDescription().setText(description + event.values[axe]);
+            mchart.notifyDataSetChanged();
+            mchart.setVisibleXRangeMaximum(mVisibleXRangeMaximum);
+            mchart.moveViewToX(data.getEntryCount());
         }
     }
 
-    private void addEndtryZ(SensorEvent event) {
-        LineData data = mChartZ.getData();
-        if (data != null) {
-            ILineDataSet set = data.getDataSetByIndex(0);
-            if (set == null) {
-                set = createSet(Color.GREEN);
-                data.addDataSet(set);
-            }
-            data.addEntry(new Entry(set.getEntryCount(), event.values[2] + 5), 0);
-            data.notifyDataChanged();
-            mChartZ.getDescription().setText("z: " + event.values[2]);
-            mChartZ.notifyDataSetChanged();
-            mChartZ.setVisibleXRangeMaximum(mVisibleXRangeMaximum);
-            mChartZ.moveViewToX(data.getEntryCount());
+    private void addEndtryX(SensorEvent event) {
+        addEndtry(event, 0);
+    }
 
+    private void addEndtryY(SensorEvent event) {
+        addEndtry(event, 1);
+    }
+
+    private void addEndtryZ(SensorEvent event) {
+        addEndtry(event, 2);
+    }
+
+    private void addLocation(){
+        if (locationData == null) {
+            locationData = new ArrayList<>();
         }
+        locationData.add(new MyLocation(latitude, longitude));
+    }
+
+    private void addTime(){
+        if (timeData == null) {
+            timeData = new ArrayList<>();
+        }
+        Date date = new Date();
+        timeData.add(simpleDateFormat.format(date));
     }
 
     private LineDataSet createSet(int color){
@@ -516,7 +558,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         }
     }
 
-
     /**
      * save data to internal storage
      * @param action
@@ -530,59 +571,77 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         }
         String fileName = makeFileName(action, speed);
         Log.d(TAG, "Saving data to filename: " + fileName);
-        FileOutputStream fos = null;
 
-        try {
-            if(TextUtils.isEmpty(dataDirectory)){
-                makeDirectory();
-            }
-            File file = new File(dataDirectory, fileName);
-            if (!file.exists()) {
+        if(TextUtils.isEmpty(dataDirectory)){
+            makeDirectory();
+        }
+        File file = new File(dataDirectory, fileName);
+        if (!file.exists()) {
+            try {
                 file.createNewFile();
+            } catch (IOException e) {
+                Toast.makeText(this, Common.ERROR_MESSAGE, Toast.LENGTH_LONG).show();
+                e.printStackTrace();
             }
-            fos = new FileOutputStream(file);
-            DataOutputStream dos = new DataOutputStream(fos);
+        }
+
+        try (BufferedWriter bw = new BufferedWriter(new FileWriter(file))) {
             LineData xData = mChartX.getData();
             LineData yData = mChartY.getData();
             LineData zData = mChartZ.getData();
-
             int minEntryCount = Math.min(xData.getEntryCount(), yData.getEntryCount());
             minEntryCount = Math.min(minEntryCount, zData.getEntryCount());
             int minCount = Math.min(minEntryCount, NUM_OF_ENTRY);
             DecimalFormat df = new DecimalFormat("0.0000");
 
-            int dem = 1;
-            dos.writeChars(String.valueOf(minCount));
+            //first row print number of point
+            bw.write(String.valueOf(minCount));
+            bw.newLine();
 
-            dos.writeChar(';');
-            for (int i = xData.getEntryCount(); i > xData.getEntryCount() - minCount; i--) {
-                float xValue = (float) (xData.getDataSetByIndex(0).getEntryForIndex(i - 1).getY() - 5);
+            String saveMode = "1";
+
+            for (int i = xData.getEntryCount() - minCount; i < xData.getEntryCount() ; i++) {
+                float xValue = (float) (xData.getDataSetByIndex(0).getEntryForIndex(i).getY() - 5);
                 String xStrValue = df.format(xValue);
-                dos.writeChars(xStrValue);
-                dos.writeChar(';');
-                dem++;
-            }
-            for (int i = yData.getEntryCount(); i > yData.getEntryCount() - minCount; i--) {
-                float yValue = (float) (yData.getDataSetByIndex(0).getEntryForIndex(i - 1).getY() - 5);
+                float yValue = (float) (yData.getDataSetByIndex(0).getEntryForIndex(i).getY() - 5);
                 String yStrValue = df.format(yValue);
-                dos.writeChars(yStrValue);
-                dos.writeChar(';');
-                dem++;
-            }
-            for (int i = zData.getEntryCount(); i > zData.getEntryCount() - minCount; i--) {
-                float zValue = (float) (zData.getDataSetByIndex(0).getEntryForIndex(i - 1).getY() - 5);
+                float zValue = (float) (zData.getDataSetByIndex(0).getEntryForIndex(i).getY() - 5);
                 String zStrValue = df.format(zValue);
-                dos.writeChars(zStrValue);
-                dos.writeChar(';');
-                dem++;
+
+                String strLatitudeValue = String.valueOf(locationData.get(i).getLatitude());
+                String strLongitudeValue = String.valueOf(locationData.get(i).getLongitude());
+
+                String strTime = timeData.get(i);
+
+                bw.write(saveMode);
+                bw.write(Common.SPACE_CHARACTER);
+
+                bw.write(xStrValue);
+                bw.write(Common.SPACE_CHARACTER);
+
+                bw.write(yStrValue);
+                bw.write(Common.SPACE_CHARACTER);
+
+                bw.write(zStrValue);
+                bw.write(Common.SPACE_CHARACTER);
+
+                bw.write(strLatitudeValue);
+                bw.write(Common.SPACE_CHARACTER);
+
+                bw.write(strLongitudeValue);
+                bw.write(Common.SPACE_CHARACTER);
+
+                bw.write(strTime);
+                bw.write(Common.SPACE_CHARACTER);
+
+                bw.write(Common.SEMICOLON_CHARACTER);
+                bw.newLine();
             }
-            fos.close();
+
             Log.d(TAG, "Saved data to filename: " + fileName);
 //            Toast.makeText(this, "Saved with " + minCount + " " + time + " //" + time/minCount, Toast.LENGTH_LONG).show();
             Toast.makeText(this, "Saved with resolution " + minCount, Toast.LENGTH_LONG).show();
-        } catch (FileNotFoundException e) {
-            Toast.makeText(this, Common.ERROR_MESSAGE, Toast.LENGTH_LONG).show();
-            e.printStackTrace();
+
         } catch (IOException e) {
             Toast.makeText(this, Common.ERROR_MESSAGE, Toast.LENGTH_LONG).show();
             e.printStackTrace();
@@ -708,50 +767,145 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         }
 
 
-        @Override
-        public final void onAccuracyChanged (Sensor sensor,int accuracy){
+    @Override
+    public final void onAccuracyChanged (Sensor sensor,int accuracy){
 
-        }
+    }
 
-        @Override
-        public final void onSensorChanged (SensorEvent sensorEvent){
-            if(isRunning){
-                addEndtryX(sensorEvent);
-                addEndtryY(sensorEvent);
-                addEndtryZ(sensorEvent);
-            }
-        }
-
-        @Override
-        protected void onPause () {
-            super.onPause();
-            sensorManager.unregisterListener(this);
-        }
-
-
-        @Override
-        protected void onDestroy () {
-            sensorManager.unregisterListener(MainActivity.this);
-            super.onDestroy();
-        }
-
-        @Override
-        protected void onResume () {
-            super.onResume();
-            sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_GAME);
-        }
-
-        @Override
-        public void onRequestPermissionsResult ( int requestCode, @NonNull String[] permissions,
-        @NonNull int[] grantResults){
-            switch (requestCode) {
-                case 1000:
-                    if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                        Toast.makeText(this, "Permission granted!", Toast.LENGTH_SHORT).show();
-                    } else {
-                        Toast.makeText(this, "Permission not granted!", Toast.LENGTH_SHORT).show();
-                        finish();
-                    }
-            }
+    @Override
+    public final void onSensorChanged (SensorEvent sensorEvent){
+        if(isRunning){
+            addEndtryX(sensorEvent);
+            addEndtryY(sensorEvent);
+            addEndtryZ(sensorEvent);
+            addLocation();
+            addTime();
         }
     }
+
+    @Override
+    protected void onPause () {
+        super.onPause();
+        sensorManager.unregisterListener(this);
+    }
+
+
+    @Override
+    protected void onDestroy () {
+        sensorManager.unregisterListener(MainActivity.this);
+        super.onDestroy();
+    }
+
+    @Override
+    protected void onResume () {
+        super.onResume();
+        sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_GAME);
+    }
+
+    @Override
+    public void onRequestPermissionsResult ( int requestCode, @NonNull String[] permissions,
+    @NonNull int[] grantResults){
+        switch (requestCode) {
+            case REQUEST_PERMISSION_REQUEST_CODE:
+                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED
+                        && grantResults[1] == PackageManager.PERMISSION_GRANTED
+                        && grantResults[2] == PackageManager.PERMISSION_GRANTED) {
+
+                } else {
+                    Toast.makeText(this, "Permission not granted!", Toast.LENGTH_SHORT).show();
+                    finish();
+                }
+                break;
+            default: break;
+        }
+    }
+
+    /**
+     * check permissions
+     * @param context
+     * @param permissions
+     * @return
+     */
+        public static boolean hasPermissions(Context context, String... permissions) {
+            if (context != null && permissions != null) {
+                for (String permission : permissions) {
+                    if (ActivityCompat.checkSelfPermission(context, permission) != PackageManager.PERMISSION_GRANTED) {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+
+    /**
+     * Check gps, if turn off => turn on request.
+     */
+    private void turnOnGPS() {
+        //get gps status
+        String provider = Settings.Secure.
+                getString(getContentResolver(),
+                        Settings.Secure.LOCATION_PROVIDERS_ALLOWED);
+
+        if (!provider.contains("gps")) {
+            final AlertDialog.Builder builder = new AlertDialog.Builder(this);
+            builder.setTitle("Smart Traffic");
+            builder.setMessage("Do you want to turn on GPS?");
+            builder.setCancelable(false);
+            builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialogInterface, int i) {
+                    startActivityForResult(new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)
+                            , 0);
+                }
+            });
+            builder.setNegativeButton("Exit", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialogInterface, int i) {
+                    Toast.makeText(MainActivity.this, "You need to turn on GPS for location info!", Toast.LENGTH_LONG).show();
+                    Process.killProcess(Process.myPid());
+                    System.exit(1);
+                }
+            });
+            AlertDialog alertDialog = builder.create();
+            alertDialog.show();
+        }
+    }
+    private void getCurrentLocation() {
+
+        LocationManager locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
+        LocationListener locationListener = new LocationListener() {
+            @Override
+            public void onLocationChanged(Location location) {
+                MainActivity.latitude = location.getLatitude();
+                MainActivity.longitude = location.getLongitude();
+                Toast.makeText(MainActivity.this, "kinh độ: " + MainActivity.latitude
+                        + "- vĩ độ: " + MainActivity.longitude, Toast.LENGTH_LONG).show();
+            }
+
+            @Override
+            public void onStatusChanged(String provider, int status, Bundle extras) {
+
+            }
+
+            @Override
+            public void onProviderEnabled(String provider) {
+
+            }
+
+            @Override
+            public void onProviderDisabled(String provider) {
+
+            }
+        };
+        if ((ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED)
+                && (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED)
+        ) {
+            return;
+        }
+        locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER,
+                1000, 10,
+                locationListener);
+    }
+}

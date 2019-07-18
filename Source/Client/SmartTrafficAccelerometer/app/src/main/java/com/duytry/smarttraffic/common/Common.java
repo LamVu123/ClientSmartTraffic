@@ -23,4 +23,6 @@ public final class Common {
     public static final String FILENAME_EXTENSION = ".txt";
 
     public static final String ERROR_MESSAGE = "Error!!!";
+    public static final String WRONG_FILE_FORMAT_ERROR_MESSAGE = "The file is not right-format. Please choose another file!";
+
 }

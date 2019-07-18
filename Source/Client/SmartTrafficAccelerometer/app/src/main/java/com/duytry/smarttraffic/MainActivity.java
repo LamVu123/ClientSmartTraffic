@@ -2,6 +2,7 @@ package com.duytry.smarttraffic;
 
 import android.Manifest;
 import android.app.AlertDialog;
+import android.content.ContentResolver;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -16,14 +17,12 @@ import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Environment;
 import android.os.Process;
 import android.provider.Settings;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
-import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.text.TextUtils;
@@ -49,13 +48,12 @@ import com.github.mikephil.charting.interfaces.datasets.ILineDataSet;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
-import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
@@ -616,13 +614,13 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 bw.write(saveMode);
                 bw.write(Common.SPACE_CHARACTER);
 
-                bw.write(xStrValue);
+                bw.write(xStrValue.replace(",", "."));
                 bw.write(Common.SPACE_CHARACTER);
 
-                bw.write(yStrValue);
+                bw.write(yStrValue.replace(",", "."));
                 bw.write(Common.SPACE_CHARACTER);
 
-                bw.write(zStrValue);
+                bw.write(zStrValue.replace(",", "."));
                 bw.write(Common.SPACE_CHARACTER);
 
                 bw.write(strLatitudeValue);
@@ -657,107 +655,183 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                     isRunning = false;
                     if (intentData != null) {
                         Uri uri = intentData.getData();
-                        String fileName = uri.getLastPathSegment().toString();
-                        String fileNameRes = "";
-                        int i = 0;
-                        while ((i < fileName.length()) && (fileName.charAt(i) != ':')) i++;
-                        i++;
-                        while (i < fileName.length()) {
-                            fileNameRes += fileName.charAt(i);
-                            i++;
-                        }
-                        Toast.makeText(this, "Uri: " + fileNameRes, Toast.LENGTH_LONG).show();
-                        StringBuilder sb = new StringBuilder();
+                        ContentResolver res = this.getContentResolver();
                         try {
-                            File textFile = new File(Environment.getExternalStorageDirectory(), fileNameRes);
-                            FileInputStream fis = new FileInputStream(textFile);
-                            if (fis != null) {
-                                InputStreamReader isr = new InputStreamReader(fis);
-                                BufferedReader buff = new BufferedReader(isr);
-                                String line = null;
-                                while ((line = buff.readLine()) != null) {
-                                    sb.append(line + "\n");
-                                }
-                                fis.close();
-                            }
-                            String sbLast = "";
-                            for (i = 0; i < sb.length(); i++) {
-                                if ((sb.charAt(i) >= '0' && sb.charAt(i) <= '9')
-                                        || (sb.charAt(i) == '.') || (sb.charAt(i) == '-') || (sb.charAt(i) == ',') ||
-                                        (sb.charAt(i) == ';')) {
-                                    if (sb.charAt(i) == ',') sbLast += '.';
-                                    else
-                                        sbLast += sb.charAt(i);
-                                }
-                            }
-                            Log.d(TAG, "onActivityResult: " + sbLast);
+                            InputStream inputStream = res.openInputStream(uri);
+                            if(inputStream != null){
+                                try (BufferedReader br = new BufferedReader(new InputStreamReader(inputStream))) {
+                                    String strCurrentLine = br.readLine();
+                                    int pointNumber = Integer.parseInt(strCurrentLine);
+                                    int i = 0;
 
-                            String strArray[] = sbLast.toString().split(";");
-                            Log.d(TAG, "onActivityResult: strArray len:" + strArray.length);
-                            float floatArr[] = new float[strArray.length];
-                            for (i = 0; i < strArray.length; i++) {
-                                floatArr[i] = Float.valueOf(strArray[i]);
-                            }
-                            int num = (int)floatArr[0];
+                                    mChartX.clearValues();
+                                    LineData dataX = mChartX.getData();
+                                    ILineDataSet setX = null;
+                                    if (dataX != null) {
+                                        setX = dataX.getDataSetByIndex(0);
+                                        if (setX == null) {
+                                            setX = createSet(Color.RED);
+                                            dataX.addDataSet(setX);
+                                        }
+                                    }
+                                    mChartY.clearValues();
+                                    LineData dataY = mChartY.getData();
+                                    ILineDataSet setY = null;
+                                    if (dataY != null) {
+                                        setY = dataY.getDataSetByIndex(0);
+                                        if (setY == null) {
+                                            setY = createSet(Color.BLUE);
+                                            dataY.addDataSet(setY);
+                                        }
+                                    }
+                                    mChartZ.clearValues();
+                                    LineData dataZ = mChartZ.getData();
+                                    ILineDataSet setZ = null;
+                                    if (dataZ != null) {
+                                        setZ = dataZ.getDataSetByIndex(0);
+                                        if (setZ == null) {
+                                            setZ = createSet(Color.GREEN);
+                                            dataZ.addDataSet(setZ);
+                                        }
+                                    }
 
-                            mChartX.clearValues();
-                            LineData dataX = mChartX.getData();
-                            if (dataX != null) {
-                                ILineDataSet set = dataX.getDataSetByIndex(0);
-                                if (set == null) {
-                                    set = createSet(Color.RED);
-                                    dataX.addDataSet(set);
-                                }
-                                Log.d(TAG, "addEndtry: " + set.getEntryCount());
-
-                                for (i = 1; i <= num; i++) {
-                                    dataX.addEntry(new Entry(set.getEntryCount(), floatArr[i]+5), 0);
+                                    while ((strCurrentLine = br.readLine()) != null) {
+                                        String[] arrValues = strCurrentLine.split(Common.SPACE_CHARACTER);
+                                        if(arrValues.length != 8){
+                                            Toast.makeText(this, Common.WRONG_FILE_FORMAT_ERROR_MESSAGE, Toast.LENGTH_LONG).show();
+                                            return;
+                                        }
+                                        dataX.addEntry(new Entry(setX.getEntryCount(), Float.parseFloat(arrValues[1])+5), 0);
+                                        dataY.addEntry(new Entry(setY.getEntryCount(), Float.parseFloat(arrValues[2])+5), 0);
+                                        dataZ.addEntry(new Entry(setZ.getEntryCount(), Float.parseFloat(arrValues[3])+5), 0);
+                                        i++;
+                                    }
                                     dataX.notifyDataChanged();
                                     mChartX.notifyDataSetChanged();
                                     mChartX.setVisibleXRangeMaximum(mVisibleXRangeMaximum);
                                     mChartX.moveViewToX(dataX.getEntryCount());
-                                }
-                            }
-                            mChartY.clearValues();
-                            LineData dataY = mChartY.getData();
-                            if (dataY != null) {
-                                ILineDataSet set = dataY.getDataSetByIndex(0);
-                                if (set == null) {
-                                    set = createSet(Color.BLUE);
-                                    dataY.addDataSet(set);
-                                }
-                                Log.d(TAG, "addEndtry: " + set.getEntryCount());
-
-                                for (i = (num+1); i <= (num*2) ; i++) {
-                                    dataY.addEntry(new Entry(set.getEntryCount(), floatArr[i]+5), 0);
                                     dataY.notifyDataChanged();
                                     mChartY.notifyDataSetChanged();
                                     mChartY.setVisibleXRangeMaximum(mVisibleXRangeMaximum);
                                     mChartY.moveViewToX(dataY.getEntryCount());
-                                }
-                            }
-                            mChartZ.clearValues();
-                            LineData dataZ = mChartZ.getData();
-                            if (dataZ != null) {
-                                ILineDataSet set = dataZ.getDataSetByIndex(0);
-                                if (set == null) {
-                                    set = createSet(Color.GREEN);
-                                    dataZ.addDataSet(set);
-                                }
-                                Log.d(TAG, "addEndtry: " + set.getEntryCount());
-
-                                for (i = (num*2+1); i <= num*3; i++) {
-                                    dataZ.addEntry(new Entry(set.getEntryCount(), floatArr[i]+5), 0);
                                     dataZ.notifyDataChanged();
                                     mChartZ.notifyDataSetChanged();
                                     mChartZ.setVisibleXRangeMaximum(mVisibleXRangeMaximum);
                                     mChartZ.moveViewToX(dataZ.getEntryCount());
+                                } catch (IOException e) {
+                                    e.printStackTrace();
                                 }
                             }
+                        } catch (FileNotFoundException | NullPointerException e) {
+                            Toast.makeText(this, Common.ERROR_MESSAGE, Toast.LENGTH_LONG).show();
+                            e.printStackTrace();
+                        } catch (NumberFormatException e){
+                            Toast.makeText(this, Common.WRONG_FILE_FORMAT_ERROR_MESSAGE, Toast.LENGTH_LONG).show();
+                            e.printStackTrace();
+                        }
 
-                            }catch(IOException e){
-                                e.printStackTrace();
-                            }
+                        //dunglh update open file 18/07/2019
+//                        String fileName = uri.getLastPathSegment().toString();
+//                        String fileNameRes = "";
+//                        int i = 0;
+//                        while ((i < fileName.length()) && (fileName.charAt(i) != ':')) i++;
+//                        i++;
+//                        while (i < fileName.length()) {
+//                            fileNameRes += fileName.charAt(i);
+//                            i++;
+//                        }
+//                        Toast.makeText(this, "Uri: " + fileNameRes, Toast.LENGTH_LONG).show();
+//                        StringBuilder sb = new StringBuilder();
+//                        try {
+//                            File textFile = new File(Environment.getExternalStorageDirectory(), fileNameRes);
+//                            FileInputStream fis = new FileInputStream(textFile);
+//                            if (fis != null) {
+//                                InputStreamReader isr = new InputStreamReader(fis);
+//                                BufferedReader buff = new BufferedReader(isr);
+//                                String line = null;
+//                                while ((line = buff.readLine()) != null) {
+//                                    sb.append(line + "\n");
+//                                }
+//                                fis.close();
+//                            }
+//                            String sbLast = "";
+//                            for (i = 0; i < sb.length(); i++) {
+//                                if ((sb.charAt(i) >= '0' && sb.charAt(i) <= '9')
+//                                        || (sb.charAt(i) == '.') || (sb.charAt(i) == '-') || (sb.charAt(i) == ',') ||
+//                                        (sb.charAt(i) == ';')) {
+//                                    if (sb.charAt(i) == ',') sbLast += '.';
+//                                    else
+//                                        sbLast += sb.charAt(i);
+//                                }
+//                            }
+//                            Log.d(TAG, "onActivityResult: " + sbLast);
+//
+//                            String strArray[] = sbLast.toString().split(";");
+//                            Log.d(TAG, "onActivityResult: strArray len:" + strArray.length);
+//                            float floatArr[] = new float[strArray.length];
+//                            for (i = 0; i < strArray.length; i++) {
+//                                floatArr[i] = Float.valueOf(strArray[i]);
+//                            }
+//                            int num = (int)floatArr[0];
+//
+//                            mChartX.clearValues();
+//                            LineData dataX = mChartX.getData();
+//                            if (dataX != null) {
+//                                ILineDataSet set = dataX.getDataSetByIndex(0);
+//                                if (set == null) {
+//                                    set = createSet(Color.RED);
+//                                    dataX.addDataSet(set);
+//                                }
+//                                Log.d(TAG, "addEndtry: " + set.getEntryCount());
+//
+//                                for (i = 1; i <= num; i++) {
+//                                    dataX.addEntry(new Entry(set.getEntryCount(), floatArr[i]+5), 0);
+//                                    dataX.notifyDataChanged();
+//                                    mChartX.notifyDataSetChanged();
+//                                    mChartX.setVisibleXRangeMaximum(mVisibleXRangeMaximum);
+//                                    mChartX.moveViewToX(dataX.getEntryCount());
+//                                }
+//                            }
+//                            mChartY.clearValues();
+//                            LineData dataY = mChartY.getData();
+//                            if (dataY != null) {
+//                                ILineDataSet set = dataY.getDataSetByIndex(0);
+//                                if (set == null) {
+//                                    set = createSet(Color.BLUE);
+//                                    dataY.addDataSet(set);
+//                                }
+//                                Log.d(TAG, "addEndtry: " + set.getEntryCount());
+//
+//                                for (i = (num+1); i <= (num*2) ; i++) {
+//                                    dataY.addEntry(new Entry(set.getEntryCount(), floatArr[i]+5), 0);
+//                                    dataY.notifyDataChanged();
+//                                    mChartY.notifyDataSetChanged();
+//                                    mChartY.setVisibleXRangeMaximum(mVisibleXRangeMaximum);
+//                                    mChartY.moveViewToX(dataY.getEntryCount());
+//                                }
+//                            }
+//                            mChartZ.clearValues();
+//                            LineData dataZ = mChartZ.getData();
+//                            if (dataZ != null) {
+//                                ILineDataSet set = dataZ.getDataSetByIndex(0);
+//                                if (set == null) {
+//                                    set = createSet(Color.GREEN);
+//                                    dataZ.addDataSet(set);
+//                                }
+//                                Log.d(TAG, "addEndtry: " + set.getEntryCount());
+//
+//                                for (i = (num*2+1); i <= num*3; i++) {
+//                                    dataZ.addEntry(new Entry(set.getEntryCount(), floatArr[i]+5), 0);
+//                                    dataZ.notifyDataChanged();
+//                                    mChartZ.notifyDataSetChanged();
+//                                    mChartZ.setVisibleXRangeMaximum(mVisibleXRangeMaximum);
+//                                    mChartZ.moveViewToX(dataZ.getEntryCount());
+//                                }
+//                            }
+//
+//                            }catch(IOException e){
+//                                e.printStackTrace();
+//                            }
 
 
                         }

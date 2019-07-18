@@ -45,6 +45,12 @@ import com.github.mikephil.charting.data.Entry;
 import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
 import com.github.mikephil.charting.interfaces.datasets.ILineDataSet;
+import com.github.nkzawa.emitter.Emitter;
+import com.github.nkzawa.socketio.client.IO;
+import com.github.nkzawa.socketio.client.Socket;
+
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -55,6 +61,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.net.URISyntaxException;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -106,6 +113,18 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
 //    Date startDate;
 
+    //cuongvv add start
+    private Socket mSocket;
+    {
+
+        try {
+            mSocket = IO.socket("http://35.198.246.69:8080");
+        } catch (URISyntaxException e) {
+            Toast.makeText(this, e.toString(), Toast.LENGTH_SHORT).show();
+        }
+    }
+    //cuongvv add end
+
     @Override
     protected void onCreate(final Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -148,9 +167,45 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         locationData = new ArrayList<>();
         timeData = new ArrayList<>();
 
+        //cuongvv start
+        mSocket.connect();
+
+        mSocket.emit("ServerDemo","Hello Server");
+        //sent file
+
+
+        //mSocket.on("dataResults",onMessage_Results);
+        //cuongvv end
+
 //        startDate = new Date();
     }
-
+//cuongvv start
+    private void sendFileToServer(String filePath){
+        File file = new File(filePath);
+        mSocket.emit("image", file);
+    }
+//cuongvv end
+/*    //cuongvv start
+    private Emitter.Listener onMessage_Results = new Emitter.Listener() {
+        @Override
+        public void call(final Object... args) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    JSONObject data = (JSONObject) args[0];
+                    String table;
+                    try{
+                        table = data.getString("table");
+                        Toast.makeText(getApplicationContext(),table,Toast.LENGTH_SHORT).show();
+                    }catch(JSONException e){
+                        return;
+                    }
+                }
+            });
+        }
+    };
+    //cuongvv end
+*/
     /**
      * Init layout
      */
@@ -868,6 +923,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     protected void onDestroy () {
         sensorManager.unregisterListener(MainActivity.this);
         super.onDestroy();
+
+        mSocket.disconnect();
     }
 
     @Override

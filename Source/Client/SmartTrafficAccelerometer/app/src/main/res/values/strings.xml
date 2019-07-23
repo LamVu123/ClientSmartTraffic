@@ -3,6 +3,7 @@
     <string name="hint_editText_name">Enter name</string>
     <string name="hint_editText_road">Enter road</string>
     <string name="text_btn_start">Start</string>
+    <string name="text_btn_push_data">Save</string>
     <string name="btn_shock_point">Shock Point</string>
     <string name="btn_speed_up">Speed Up</string>
     <string name="btn_brake_down">Brake Down</string>

@@ -45,12 +45,8 @@ import com.github.mikephil.charting.data.Entry;
 import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
 import com.github.mikephil.charting.interfaces.datasets.ILineDataSet;
-import com.github.nkzawa.emitter.Emitter;
 import com.github.nkzawa.socketio.client.IO;
 import com.github.nkzawa.socketio.client.Socket;
-
-import org.json.JSONException;
-import org.json.JSONObject;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -118,7 +114,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     {
 
         try {
-            mSocket = IO.socket("http://35.198.246.69:8080");
+            mSocket = IO.socket("http://35.198.198.244:8080");
         } catch (URISyntaxException e) {
             Toast.makeText(this, e.toString(), Toast.LENGTH_SHORT).show();
         }
@@ -181,8 +177,32 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     }
 //cuongvv start
     private void sendFileToServer(String filePath){
-        File file = new File(filePath);
-        mSocket.emit("image", file);
+
+//        mSocket.emit("image", road + File.separator + filePath);
+
+        mSocket.emit("filename", filePath);
+        FileInputStream inputStream = null;
+        try {
+            inputStream = new FileInputStream(dataDirectory + File.separator + filePath);
+        } catch (FileNotFoundException e) {
+            Log.d(TAG, "send file to server error");
+            Toast.makeText(this, Common.OPEN_FILE_ERROR_MESSAGE, Toast.LENGTH_LONG).show();
+            e.printStackTrace();
+        }
+        StringBuilder data = new StringBuilder();
+        if(inputStream != null){
+            try (BufferedReader br = new BufferedReader(new InputStreamReader(inputStream))) {
+                String strCurrentLine;
+                while ((strCurrentLine = br.readLine()) != null) {
+                    data.append(strCurrentLine);
+                    data.append(System.lineSeparator());
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        mSocket.emit("data", data.toString());
+
     }
 //cuongvv end
 /*    //cuongvv start
@@ -235,16 +255,14 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         btnResume.setOnClickListener(resumeListener);
 
         //save button
-//        btnSave = (Button) findViewById(R.id.save);
-//        saveListener = new View.OnClickListener() {
-//            @Override
-//            public void onClick(View v) {
-//                sensorManager.unregisterListener(MainActivity.this);
-//                openSaveActivity();
-//                sensorManager.registerListener(MainActivity.this, accelerometer, SensorManager.SENSOR_DELAY_GAME);
-//            }
-//        };
-//        btnSave.setOnClickListener(saveListener);
+        btnSave = (Button) findViewById(R.id.btn_push_data);
+        saveListener = new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                pushDataToServer();
+            }
+        };
+        btnSave.setOnClickListener(saveListener);
 
         //open button
         btnOpen = (Button) findViewById(R.id.open);
@@ -270,7 +288,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             @Override
             public void onClick(View v) {
                 Log.d(TAG, "Button Shock Point clicked");
-                saveData(Common.SHOCK_POINT_ACTION);
+                String file = saveData(Common.SHOCK_POINT_ACTION);
             }
         };
         btnShockPoint.setOnClickListener(saveShockPointListener);
@@ -550,9 +568,15 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         return set;
     }
 
-    private void openSaveActivity() {
-        Intent intent = new Intent(this, SaveActivity.class);
-        startActivityForResult(intent, MESSAGE_REQUEST);
+    private void pushDataToServer() {
+        String road = userInformation.getString(Common.ROAD_PREFERENCES_KEY, Common.UNDEFINED);
+        mSocket.emit("road", road);
+        File folder = new File(dataDirectory);
+        String[] files = folder.list();
+        for ( String file : files ) {
+            sendFileToServer(file);
+        }
+
     }
 
     /**
@@ -563,19 +587,16 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
      */
     private String makeFileName(String action, String speed){
         String name = userInformation.getString(Common.NAME_PREFERENCES_KEY, Common.UNDEFINED);
-        String road = userInformation.getString(Common.ROAD_PREFERENCES_KEY, Common.UNDEFINED);
         Date currentTime = Calendar.getInstance().getTime();
         String time = simpleDateFormat.format(currentTime);
 
         StringBuilder fileName = new StringBuilder();
         fileName.append(name);
-        fileName.append(Common.UNDERLINED);
-        fileName.append(road);
-        fileName.append(Common.UNDERLINED);
+        fileName.append(Common.UNDERLINED_CHARACTER);
         fileName.append(action);
-        fileName.append(Common.UNDERLINED);
+        fileName.append(Common.UNDERLINED_CHARACTER);
         fileName.append(removeSlash(speed));
-        fileName.append(Common.UNDERLINED);
+        fileName.append(Common.UNDERLINED_CHARACTER);
         fileName.append(time);
         fileName.append(Common.FILENAME_EXTENSION);
 
@@ -600,12 +621,19 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
      * Create folder to save data
      */
     private void makeDirectory(){
+        String road = userInformation.getString(Common.ROAD_PREFERENCES_KEY, Common.UNDEFINED);
         StringBuilder directory = new StringBuilder();
         directory.append(Environment.getExternalStorageDirectory().getAbsolutePath());
         directory.append(File.separator);
         directory.append(Common.FILENAME_DIRECTORY);
+        File folder = new File(directory.toString());
+        if (!folder.exists()) {
+            folder.mkdirs();
+        }
+        directory.append(File.separator);
+        directory.append(road);
         this.dataDirectory = directory.toString();
-        File folder = new File(this.dataDirectory);
+        folder = new File(this.dataDirectory.toString());
         if (!folder.exists()) {
             folder.mkdirs();
         }
@@ -614,8 +642,9 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     /**
      * save data to internal storage
      * @param action
+     * @return
      */
-    private void saveData(String action){
+    private String saveData(String action){
 //        Date clickTime = new Date();
 //        long time = clickTime.getTime() - startDate.getTime();
         String speed = spinnerSpeed.getSelectedItem().toString();
@@ -699,6 +728,13 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             Toast.makeText(this, Common.ERROR_MESSAGE, Toast.LENGTH_LONG).show();
             e.printStackTrace();
         }
+        String path = null;
+        try {
+            path = file.getPath();
+        } catch (NullPointerException e){
+            e.printStackTrace();
+        }
+        return path;
     }
 
     @Override
@@ -706,194 +742,93 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         switch (requestCode) {
             case CHOOSE_FILE_MESS_CODE:
                 if (resultCode == RESULT_OK) {
-                    sensorManager.unregisterListener(MainActivity.this);
-                    isRunning = false;
-                    if (intentData != null) {
-                        Uri uri = intentData.getData();
-                        ContentResolver res = this.getContentResolver();
-                        try {
-                            InputStream inputStream = res.openInputStream(uri);
-                            if(inputStream != null){
-                                try (BufferedReader br = new BufferedReader(new InputStreamReader(inputStream))) {
-                                    String strCurrentLine = br.readLine();
-                                    int pointNumber = Integer.parseInt(strCurrentLine);
-                                    int i = 0;
-
-                                    mChartX.clearValues();
-                                    LineData dataX = mChartX.getData();
-                                    ILineDataSet setX = null;
-                                    if (dataX != null) {
-                                        setX = dataX.getDataSetByIndex(0);
-                                        if (setX == null) {
-                                            setX = createSet(Color.RED);
-                                            dataX.addDataSet(setX);
-                                        }
-                                    }
-                                    mChartY.clearValues();
-                                    LineData dataY = mChartY.getData();
-                                    ILineDataSet setY = null;
-                                    if (dataY != null) {
-                                        setY = dataY.getDataSetByIndex(0);
-                                        if (setY == null) {
-                                            setY = createSet(Color.BLUE);
-                                            dataY.addDataSet(setY);
-                                        }
-                                    }
-                                    mChartZ.clearValues();
-                                    LineData dataZ = mChartZ.getData();
-                                    ILineDataSet setZ = null;
-                                    if (dataZ != null) {
-                                        setZ = dataZ.getDataSetByIndex(0);
-                                        if (setZ == null) {
-                                            setZ = createSet(Color.GREEN);
-                                            dataZ.addDataSet(setZ);
-                                        }
-                                    }
-
-                                    while ((strCurrentLine = br.readLine()) != null) {
-                                        String[] arrValues = strCurrentLine.split(Common.SPACE_CHARACTER);
-                                        if(arrValues.length != 8){
-                                            Toast.makeText(this, Common.WRONG_FILE_FORMAT_ERROR_MESSAGE, Toast.LENGTH_LONG).show();
-                                            return;
-                                        }
-                                        dataX.addEntry(new Entry(setX.getEntryCount(), Float.parseFloat(arrValues[1])+5), 0);
-                                        dataY.addEntry(new Entry(setY.getEntryCount(), Float.parseFloat(arrValues[2])+5), 0);
-                                        dataZ.addEntry(new Entry(setZ.getEntryCount(), Float.parseFloat(arrValues[3])+5), 0);
-                                        i++;
-                                    }
-                                    dataX.notifyDataChanged();
-                                    mChartX.notifyDataSetChanged();
-                                    mChartX.setVisibleXRangeMaximum(mVisibleXRangeMaximum);
-                                    mChartX.moveViewToX(dataX.getEntryCount());
-                                    dataY.notifyDataChanged();
-                                    mChartY.notifyDataSetChanged();
-                                    mChartY.setVisibleXRangeMaximum(mVisibleXRangeMaximum);
-                                    mChartY.moveViewToX(dataY.getEntryCount());
-                                    dataZ.notifyDataChanged();
-                                    mChartZ.notifyDataSetChanged();
-                                    mChartZ.setVisibleXRangeMaximum(mVisibleXRangeMaximum);
-                                    mChartZ.moveViewToX(dataZ.getEntryCount());
-                                } catch (IOException e) {
-                                    e.printStackTrace();
-                                }
-                            }
-                        } catch (FileNotFoundException | NullPointerException e) {
-                            Toast.makeText(this, Common.ERROR_MESSAGE, Toast.LENGTH_LONG).show();
-                            e.printStackTrace();
-                        } catch (NumberFormatException e){
-                            Toast.makeText(this, Common.WRONG_FILE_FORMAT_ERROR_MESSAGE, Toast.LENGTH_LONG).show();
-                            e.printStackTrace();
-                        }
-
-                        //dunglh update open file 18/07/2019
-//                        String fileName = uri.getLastPathSegment().toString();
-//                        String fileNameRes = "";
-//                        int i = 0;
-//                        while ((i < fileName.length()) && (fileName.charAt(i) != ':')) i++;
-//                        i++;
-//                        while (i < fileName.length()) {
-//                            fileNameRes += fileName.charAt(i);
-//                            i++;
-//                        }
-//                        Toast.makeText(this, "Uri: " + fileNameRes, Toast.LENGTH_LONG).show();
-//                        StringBuilder sb = new StringBuilder();
-//                        try {
-//                            File textFile = new File(Environment.getExternalStorageDirectory(), fileNameRes);
-//                            FileInputStream fis = new FileInputStream(textFile);
-//                            if (fis != null) {
-//                                InputStreamReader isr = new InputStreamReader(fis);
-//                                BufferedReader buff = new BufferedReader(isr);
-//                                String line = null;
-//                                while ((line = buff.readLine()) != null) {
-//                                    sb.append(line + "\n");
-//                                }
-//                                fis.close();
-//                            }
-//                            String sbLast = "";
-//                            for (i = 0; i < sb.length(); i++) {
-//                                if ((sb.charAt(i) >= '0' && sb.charAt(i) <= '9')
-//                                        || (sb.charAt(i) == '.') || (sb.charAt(i) == '-') || (sb.charAt(i) == ',') ||
-//                                        (sb.charAt(i) == ';')) {
-//                                    if (sb.charAt(i) == ',') sbLast += '.';
-//                                    else
-//                                        sbLast += sb.charAt(i);
-//                                }
-//                            }
-//                            Log.d(TAG, "onActivityResult: " + sbLast);
-//
-//                            String strArray[] = sbLast.toString().split(";");
-//                            Log.d(TAG, "onActivityResult: strArray len:" + strArray.length);
-//                            float floatArr[] = new float[strArray.length];
-//                            for (i = 0; i < strArray.length; i++) {
-//                                floatArr[i] = Float.valueOf(strArray[i]);
-//                            }
-//                            int num = (int)floatArr[0];
-//
-//                            mChartX.clearValues();
-//                            LineData dataX = mChartX.getData();
-//                            if (dataX != null) {
-//                                ILineDataSet set = dataX.getDataSetByIndex(0);
-//                                if (set == null) {
-//                                    set = createSet(Color.RED);
-//                                    dataX.addDataSet(set);
-//                                }
-//                                Log.d(TAG, "addEndtry: " + set.getEntryCount());
-//
-//                                for (i = 1; i <= num; i++) {
-//                                    dataX.addEntry(new Entry(set.getEntryCount(), floatArr[i]+5), 0);
-//                                    dataX.notifyDataChanged();
-//                                    mChartX.notifyDataSetChanged();
-//                                    mChartX.setVisibleXRangeMaximum(mVisibleXRangeMaximum);
-//                                    mChartX.moveViewToX(dataX.getEntryCount());
-//                                }
-//                            }
-//                            mChartY.clearValues();
-//                            LineData dataY = mChartY.getData();
-//                            if (dataY != null) {
-//                                ILineDataSet set = dataY.getDataSetByIndex(0);
-//                                if (set == null) {
-//                                    set = createSet(Color.BLUE);
-//                                    dataY.addDataSet(set);
-//                                }
-//                                Log.d(TAG, "addEndtry: " + set.getEntryCount());
-//
-//                                for (i = (num+1); i <= (num*2) ; i++) {
-//                                    dataY.addEntry(new Entry(set.getEntryCount(), floatArr[i]+5), 0);
-//                                    dataY.notifyDataChanged();
-//                                    mChartY.notifyDataSetChanged();
-//                                    mChartY.setVisibleXRangeMaximum(mVisibleXRangeMaximum);
-//                                    mChartY.moveViewToX(dataY.getEntryCount());
-//                                }
-//                            }
-//                            mChartZ.clearValues();
-//                            LineData dataZ = mChartZ.getData();
-//                            if (dataZ != null) {
-//                                ILineDataSet set = dataZ.getDataSetByIndex(0);
-//                                if (set == null) {
-//                                    set = createSet(Color.GREEN);
-//                                    dataZ.addDataSet(set);
-//                                }
-//                                Log.d(TAG, "addEndtry: " + set.getEntryCount());
-//
-//                                for (i = (num*2+1); i <= num*3; i++) {
-//                                    dataZ.addEntry(new Entry(set.getEntryCount(), floatArr[i]+5), 0);
-//                                    dataZ.notifyDataChanged();
-//                                    mChartZ.notifyDataSetChanged();
-//                                    mChartZ.setVisibleXRangeMaximum(mVisibleXRangeMaximum);
-//                                    mChartZ.moveViewToX(dataZ.getEntryCount());
-//                                }
-//                            }
-//
-//                            }catch(IOException e){
-//                                e.printStackTrace();
-//                            }
-
-
-                        }
-                    }
-                    break;
+                    openFile(intentData);
                 }
+                break;
         }
+    }
+
+    private void openFile(@Nullable Intent intentData){
+        sensorManager.unregisterListener(MainActivity.this);
+         isRunning = false;
+         if (intentData != null) {
+             Uri uri = intentData.getData();
+             ContentResolver res = this.getContentResolver();
+             try {
+                 InputStream inputStream = res.openInputStream(uri);
+                 if(inputStream != null){
+                     try (BufferedReader br = new BufferedReader(new InputStreamReader(inputStream))) {
+                         String strCurrentLine = br.readLine();
+                         int pointNumber = Integer.parseInt(strCurrentLine);
+                         int i = 0;
+
+                         mChartX.clearValues();
+                         LineData dataX = mChartX.getData();
+                         ILineDataSet setX = null;
+                         if (dataX != null) {
+                             setX = dataX.getDataSetByIndex(0);
+                             if (setX == null) {
+                                 setX = createSet(Color.RED);
+                                 dataX.addDataSet(setX);
+                             }
+                         }
+                         mChartY.clearValues();
+                         LineData dataY = mChartY.getData();
+                         ILineDataSet setY = null;
+                         if (dataY != null) {
+                             setY = dataY.getDataSetByIndex(0);
+                             if (setY == null) {
+                                 setY = createSet(Color.BLUE);
+                                 dataY.addDataSet(setY);
+                             }
+                         }
+                         mChartZ.clearValues();
+                         LineData dataZ = mChartZ.getData();
+                         ILineDataSet setZ = null;
+                         if (dataZ != null) {
+                             setZ = dataZ.getDataSetByIndex(0);
+                             if (setZ == null) {
+                                 setZ = createSet(Color.GREEN);
+                                 dataZ.addDataSet(setZ);
+                             }
+                         }
+
+                         while ((strCurrentLine = br.readLine()) != null) {
+                             String[] arrValues = strCurrentLine.split(Common.SPACE_CHARACTER);
+                             if(arrValues.length != 8){
+                                 Toast.makeText(this, Common.WRONG_FILE_FORMAT_ERROR_MESSAGE, Toast.LENGTH_LONG).show();
+                                 return;
+                             }
+                             dataX.addEntry(new Entry(setX.getEntryCount(), Float.parseFloat(arrValues[1])+5), 0);
+                             dataY.addEntry(new Entry(setY.getEntryCount(), Float.parseFloat(arrValues[2])+5), 0);
+                             dataZ.addEntry(new Entry(setZ.getEntryCount(), Float.parseFloat(arrValues[3])+5), 0);
+                             i++;
+                         }
+                         dataX.notifyDataChanged();
+                         mChartX.notifyDataSetChanged();
+                         mChartX.setVisibleXRangeMaximum(mVisibleXRangeMaximum);
+                         mChartX.moveViewToX(dataX.getEntryCount());
+                         dataY.notifyDataChanged();
+                         mChartY.notifyDataSetChanged();
+                         mChartY.setVisibleXRangeMaximum(mVisibleXRangeMaximum);
+                         mChartY.moveViewToX(dataY.getEntryCount());
+                         dataZ.notifyDataChanged();
+                         mChartZ.notifyDataSetChanged();
+                         mChartZ.setVisibleXRangeMaximum(mVisibleXRangeMaximum);
+                         mChartZ.moveViewToX(dataZ.getEntryCount());
+                     } catch (IOException e) {
+                         e.printStackTrace();
+                     }
+                 }
+             } catch (FileNotFoundException | NullPointerException e) {
+                 Toast.makeText(this, Common.ERROR_MESSAGE, Toast.LENGTH_LONG).show();
+                 e.printStackTrace();
+             } catch (NumberFormatException e){
+                 Toast.makeText(this, Common.WRONG_FILE_FORMAT_ERROR_MESSAGE, Toast.LENGTH_LONG).show();
+                 e.printStackTrace();
+             }
+         }
+    }
 
 
     @Override

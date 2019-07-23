@@ -13,8 +13,8 @@ public final class Common {
     public static final String PARKING_ACTION = "parking";
 
 
-    public static final String UNDERLINED = "_";
-//    public static final String SLASH = "/";
+    public static final String UNDERLINED_CHARACTER = "_";
+    public static final String SLASH_CHARACTER = "/";
     public static final String DASH_CHARACTER = "-";
     public static final String SPACE_CHARACTER = " ";
     public static final String SEMICOLON_CHARACTER = ";";
@@ -23,6 +23,7 @@ public final class Common {
     public static final String FILENAME_EXTENSION = ".txt";
 
     public static final String ERROR_MESSAGE = "Error!!!";
+    public static final String OPEN_FILE_ERROR_MESSAGE = "Unexpected error when open file!";
     public static final String WRONG_FILE_FORMAT_ERROR_MESSAGE = "The file is not right-format. Please choose another file!";
 
 }

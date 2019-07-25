@@ -114,7 +114,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     {
 
         try {
-            mSocket = IO.socket("http://35.198.198.244:8080");
+            mSocket = IO.socket(BuildConfig.SendDataIp);
         } catch (URISyntaxException e) {
             Toast.makeText(this, e.toString(), Toast.LENGTH_SHORT).show();
         }
@@ -165,8 +165,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
         //cuongvv start
         mSocket.connect();
-
-        mSocket.emit("ServerDemo","Hello Server");
         //sent file
 
 

@@ -10,19 +10,36 @@ import android.graphics.Color;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+import android.media.MediaPlayer;
+import android.media.Ringtone;
+import android.media.RingtoneManager;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Process;
+import android.provider.MediaStore;
 import android.provider.Settings;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentActivity;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.FrameLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.example.smartTraffic.entity.RoadEntity;
+import com.example.smartTraffic.entity.ShockingPointEntity;
+import com.github.nkzawa.emitter.Emitter;
+import com.github.nkzawa.socketio.client.IO;
+import com.github.nkzawa.socketio.client.On;
+import com.github.nkzawa.socketio.client.Socket;
+import com.google.android.gms.location.LocationCallback;
+import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationResult;
+import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.maps.CameraUpdate;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
@@ -34,10 +51,20 @@ import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
+import com.google.android.gms.location.FusedLocationProviderClient;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.io.UnsupportedEncodingException;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
 
 import Modules.*;
 
@@ -46,7 +73,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private GoogleMap mMap;
     private static final int REQUEST_CODE = 0;
     private static final String TAG = "MapsActivity";
-    public static LatLng currentLocation;
+//    public static LatLng currentLocation;
     private Button btnFindPath;
     private Button btnAcc;
     private Button btnRoadName;
@@ -58,11 +85,29 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private ProgressDialog progressDialog;
     private String currentCoordinate;
     private String currentRoad;
+    private Thread realtimeLocation;
+
+    private boolean mLocationPermissionGranted;
+    private Location mLastKnownLocation;
+    private FusedLocationProviderClient mFusedLocationProviderClient;
+    private static final int DEFAULT_ZOOM = 15;
+    private final LatLng mDefaultLocation = new LatLng(21.013138, 105.526876);
+    private static final int WARNING_DISTANCE = 400;
+    private static boolean isWarnningOn = false;
+    private static boolean isMessageDisplayed = false;
+
+    private static ArrayList<ShockingPointEntity> shockingPointAheads;
+    private static ArrayList<ShockingPointEntity> incomingShockingPoints;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_maps);
+
+        mFusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
+
+
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
@@ -72,7 +117,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         if (Build.VERSION.SDK_INT >= 23) {
             setPermission();
         } else {
-            getCurrentLocation();
+//            getCurrentLocation();
+            getDeviceLocation();
         }
 
         btnFindPath = (Button) findViewById(R.id.btnFindPath);
@@ -104,6 +150,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
             }
         });
+
+        shockingPointAheads = new ArrayList<>();
+        incomingShockingPoints = new ArrayList<>();
+
     }
 
     //set permission to access location and getCurrentLocation
@@ -118,7 +168,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                             {Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION}
                     , REQUEST_CODE);
         } else {
-            getCurrentLocation();
+            mLocationPermissionGranted = true;
+//            getCurrentLocation();
+            getDeviceLocation();
         }
     }
 
@@ -126,7 +178,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        getCurrentLocation();
+        mLocationPermissionGranted = true;
+//        getCurrentLocation();
+        getDeviceLocation();
     }
 
     // Check gps, if turn off => turn on request.
@@ -160,44 +214,44 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }
     }
 
-    private void getCurrentLocation() {
-
-        LocationManager locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
-        LocationListener locationListener = new LocationListener() {
-            @Override
-            public void onLocationChanged(Location location) {
-                currentLocation = new LatLng(location.getLatitude(), location.getLongitude());
-                //Log.d(TAG, "onLocateChange: "+ currentLocation);
-                //Toast.makeText(MapsActivity.this, "kinh độ - vĩ độ: " + currentLocation.toString(), Toast.LENGTH_LONG).show();
-                currentCoordinate = currentLocation.toString();
-            }
-
-            @Override
-            public void onStatusChanged(String provider, int status, Bundle extras) {
-
-            }
-
-            @Override
-            public void onProviderEnabled(String provider) {
-
-            }
-
-            @Override
-            public void onProviderDisabled(String provider) {
-
-            }
-        };
-        if ((ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
-                != PackageManager.PERMISSION_GRANTED)
-                && (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
-                != PackageManager.PERMISSION_GRANTED)
-        ) {
-            return;
-        }
-        locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER,
-                3000, 0,
-                locationListener);
-    }
+//    private void getCurrentLocation() {
+//
+//        LocationManager locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
+//        LocationListener locationListener = new LocationListener() {
+//            @Override
+//            public void onLocationChanged(Location location) {
+//                currentLocation = new LatLng(location.getLatitude(), location.getLongitude());
+//                //Log.d(TAG, "onLocateChange: "+ currentLocation);
+//                //Toast.makeText(MapsActivity.this, "kinh độ - vĩ độ: " + currentLocation.toString(), Toast.LENGTH_LONG).show();
+//                currentCoordinate = currentLocation.toString();
+//            }
+//
+//            @Override
+//            public void onStatusChanged(String provider, int status, Bundle extras) {
+//
+//            }
+//
+//            @Override
+//            public void onProviderEnabled(String provider) {
+//
+//            }
+//
+//            @Override
+//            public void onProviderDisabled(String provider) {
+//
+//            }
+//        };
+//        if ((ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+//                != PackageManager.PERMISSION_GRANTED)
+//                && (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
+//                != PackageManager.PERMISSION_GRANTED)
+//        ) {
+//            return;
+//        }
+//        locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER,
+//                3000, 0,
+//                locationListener);
+//    }
 
 
     /**
@@ -213,20 +267,65 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
 
-        // Add a marker in Sydney and move the camera
-        LatLng fptUniLocal = new LatLng(21.013138, 105.526876);
-        mMap.addMarker(new MarkerOptions().position(fptUniLocal).title("Marker in FPT University"));
-        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(fptUniLocal, 15));
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
-                && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            return;
-        }
-        mMap.setMyLocationEnabled(true);
-        if (currentLocation != null) {
-            CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(currentLocation, 15);
-            mMap.animateCamera(cameraUpdate);
-        }
+//        // Add a marker in Sydney and move the camera
+//        LatLng fptUniLocal = new LatLng(21.013138, 105.526876);
+//        mMap.addMarker(new MarkerOptions().position(fptUniLocal).title("Marker in FPT University"));
+//        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(fptUniLocal, 15));
+//        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
+//                && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+//            return;
+//        }
+//        mMap.setMyLocationEnabled(true);
+//        if (currentLocation != null) {
+//            CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(currentLocation, 15);
+//            mMap.animateCamera(cameraUpdate);
+//        }
+
+//        mMap.setInfoWindowAdapter(new GoogleMap.InfoWindowAdapter() {
+//
+//            @Override
+//            // Return null here, so that getInfoContents() is called next.
+//            public View getInfoWindow(Marker arg0) {
+//                return null;
+//            }
+//
+//            @Override
+//            public View getInfoContents(Marker marker) {
+//                // Inflate the layouts for the info window, title and snippet.
+//                View infoWindow = getLayoutInflater().inflate(R.layout.custom_info_contents,
+//                        (FrameLayout) findViewById(R.id.map), false);
+//
+//                TextView title = ((TextView) infoWindow.findViewById(R.id.title));
+//                title.setText(marker.getTitle());
+//
+//                TextView snippet = ((TextView) infoWindow.findViewById(R.id.snippet));
+//                snippet.setText(marker.getSnippet());
+//
+//                return infoWindow;
+//            }
+//        });
+
+
+
+
+        //dunglh 25/07 start
+
+        // Prompt the user for permission.
+        setPermission();
+
+        // Turn on the My Location layer and the related control on the map.
+        updateLocationUI();
+
+        // Get the current location of the device and set the position of the map.
+        getDeviceLocation();
+
+        startLocationUpdates();
+        mSocket.connect();
+        getShockPoints();
+        //dunglh 25/07 end
     }
+
+
 
     private void sendRequest() {
         String origin = etOrigin.getText().toString();
@@ -305,4 +404,246 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             polylinePaths.add(mMap.addPolyline(polylineOptions));
         }
     }
+
+    //dunglh 25/07/2019 start
+
+    private void updateLocationUI() {
+        if (mMap == null) {
+            return;
+        }
+        try {
+            if (mLocationPermissionGranted) {
+                mMap.setMyLocationEnabled(true);
+                mMap.getUiSettings().setMyLocationButtonEnabled(true);
+            } else {
+                mMap.setMyLocationEnabled(false);
+                mMap.getUiSettings().setMyLocationButtonEnabled(false);
+                mLastKnownLocation = null;
+                setPermission();
+            }
+        } catch (SecurityException e)  {
+            Log.e("Exception: %s", e.getMessage());
+        }
+    }
+
+    private void getDeviceLocation() {
+        /*
+         * Get the best and most recent location of the device, which may be null in rare
+         * cases when a location is not available.
+         */
+        try {
+            if (mLocationPermissionGranted) {
+                Task locationResult = mFusedLocationProviderClient.getLastLocation();
+                locationResult.addOnCompleteListener(this, new OnCompleteListener<Location>() {
+                    @Override
+                    public void onComplete(@NonNull Task<Location> task) {
+                        if (task.isSuccessful()) {
+                            // Set the map's camera position to the current location of the device.
+                            mLastKnownLocation = task.getResult();
+                            mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(
+                                    new LatLng(mLastKnownLocation.getLatitude(),
+                                            mLastKnownLocation.getLongitude()), DEFAULT_ZOOM));
+                        } else {
+                            Log.d(TAG, "Current location is null. Using defaults.");
+                            Log.e(TAG, "Exception: %s", task.getException());
+                            mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(mDefaultLocation, DEFAULT_ZOOM));
+                            mMap.getUiSettings().setMyLocationButtonEnabled(false);
+                        }
+                    }
+                });
+            }
+        } catch(SecurityException e)  {
+            Log.e("Exception: %s", e.getMessage());
+        }
+    }
+
+    private void getShockPoints() {
+//        mSocket.emit("road", "test");
+//        mSocket.on("points", onMessage_Results);
+        testMarker();
+        isWarnningOn = true;
+    }
+
+    private Socket mSocket;
+    {
+        try {
+            mSocket = IO.socket(BuildConfig.GetDataIp);
+        } catch (URISyntaxException e) {
+            Toast.makeText(this, e.toString(), Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private Emitter.Listener onMessage_Results = new Emitter.Listener() {
+        @Override
+        public void call(final Object... args) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+
+                    JSONObject data = (JSONObject) args[0];
+
+                    try{
+                        JSONObject road = data.getJSONObject("road");
+                        int id = road.getInt("id");
+                        String name = road.getString("name");
+                        RoadEntity roadEntity = new RoadEntity(id, name);
+                        JSONArray points = (JSONArray) data.getJSONArray("points");
+                        for (int i = 0; i < points.length(); i++) {
+                            JSONObject point = (JSONObject) points.get(i);
+                            int pointId = point.getInt("id");
+                            double pointLat = point.getDouble("latitude");
+                            double pointLng = point.getDouble("longitude");
+                            ShockingPointEntity shockingPoint = new ShockingPointEntity(pointId, pointLat, pointLng, roadEntity);
+                            shockingPointMarker(shockingPoint);
+                        }
+
+                    }catch(JSONException e){
+                        return;
+                    }
+                }
+            });
+        }
+    };
+
+    private void testMarker(){
+        ArrayList<ShockingPointEntity> shockingPoints = createSomeDummyPoints();
+        for ( ShockingPointEntity shockingPoint : shockingPoints) {
+            shockingPointMarker(shockingPoint);
+        }
+        //TODO arrange points from distance
+        shockingPointAheads = shockingPoints;
+    }
+
+    private ArrayList<ShockingPointEntity> createSomeDummyPoints(){
+        ShockingPointEntity shockingPoint1 = new ShockingPointEntity(1, 21.0129657, 105.5278376);
+        ShockingPointEntity shockingPoint2 = new ShockingPointEntity(2, 21.010091, 105.523932);
+        ShockingPointEntity shockingPoint3 = new ShockingPointEntity(3, 21.022830, 105.544446);
+
+        ArrayList<ShockingPointEntity> shockingPoints = new ArrayList<>();
+        shockingPoints.add(shockingPoint1);
+        shockingPoints.add(shockingPoint2);
+        shockingPoints.add(shockingPoint3);
+        return shockingPoints;
+    }
+
+
+    private void shockingPointMarker(ShockingPointEntity shockingPoint){
+        LatLng pointLatLng = new LatLng(shockingPoint.getLatitude(), shockingPoint.getLongitude());
+        Marker pointMarker = mMap.addMarker(new MarkerOptions()
+                .position(pointLatLng)
+                .title("Shock point")
+                .snippet(shockingPoint.toString())
+                .icon(BitmapDescriptorFactory.fromResource(R.drawable.icon_shocking_point)));
+    }
+
+    LocationRequest locationRequest;
+
+    protected void createLocationRequest() {
+        locationRequest = LocationRequest.create();
+        locationRequest.setInterval(1000);
+        locationRequest.setFastestInterval(500);
+        locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+    }
+
+    private void startLocationUpdates() {
+        createLocationRequest();
+        mFusedLocationProviderClient.requestLocationUpdates(locationRequest,
+                locationCallback,
+                null /* Looper */);
+    }
+
+    private LocationCallback locationCallback = new LocationCallback() {
+        @Override
+        public void onLocationResult(LocationResult locationResult) {
+            if (locationResult == null) {
+                return;
+            }
+            for (Location location : locationResult.getLocations()) {
+               mLastKnownLocation = location;
+               if(isWarnningOn && !shockingPointAheads.isEmpty()){
+                   ShockingPointEntity nearestPoint = shockingPointAheads.get(0);
+                   Location nearestPointLocation = new Location("incoming shocking point");
+                   nearestPointLocation.setLatitude(nearestPoint.getLatitude());
+                   nearestPointLocation.setLongitude(nearestPoint.getLongitude());
+                   float distanceInMeters =  nearestPointLocation.distanceTo(location);
+                   if(distanceInMeters <= WARNING_DISTANCE){
+                       //TODO improve remove last shocking point feature
+                       if(!incomingShockingPoints.isEmpty()){
+                           ShockingPointEntity incomingPoint = incomingShockingPoints.get(0);
+                           Location incomingPointLocation = new Location("incoming shocking point");
+                           incomingPointLocation.setLatitude(incomingPoint.getLatitude());
+                           incomingPointLocation.setLongitude(incomingPoint.getLongitude());
+                           float distance =  nearestPointLocation.distanceTo(location);
+                           if(distance <= 100){
+                               incomingShockingPoints.remove(0);
+                           }
+                       }
+                       //TODO end
+
+                       //start warning
+                       incomingShockingPoints.add(shockingPointAheads.get(0));
+                       shockingPointAheads.remove(0);
+                       showAlertDialogAutoClose("Warning", "Ahead " + WARNING_DISTANCE + "m is a shocking point", 5000);
+                   }
+               }
+            }
+        };
+    };
+
+    private void showAlertDialogAutoClose(String tittle, String message, final int time){
+
+//        String uriPath = "android.resource://"+getPackageName()+"/raw/alert1.mp3";
+//        Uri notification = MediaStore.Audio.Media.getContentUriForPath(uriPath);;
+//        final Ringtone r = RingtoneManager.getRingtone(getApplicationContext(), notification);
+//        r.play();
+
+        final MediaPlayer[] mp = {MediaPlayer.create(this, R.raw.alert1)};
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle(tittle);
+        builder.setMessage(message);
+        builder.setCancelable(true);
+        builder.setNeutralButton("OK", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                if (mp[0].isPlaying()) {
+                    mp[0].stop();
+                    mp[0].release();
+                }
+            }
+        });
+
+        final AlertDialog dlg = builder.create();
+
+        dlg.show();
+        mp[0].start();
+
+
+        final Timer t = new Timer();
+        t.schedule(new TimerTask() {
+            public void run() {
+                if(dlg.isShowing()){
+                    if (mp[0].isPlaying()) {
+                        mp[0].stop();
+                        mp[0].release();
+                    }
+                    dlg.dismiss(); // when the task active then close the dialog
+                }
+                t.cancel(); // also just top the timer thread, otherwise, you may receive a crash report
+            }
+        }, time);
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        stopLocationUpdates();
+    }
+
+    private void stopLocationUpdates() {
+        mFusedLocationProviderClient.removeLocationUpdates(locationCallback);
+    }
+
+    //dunglh 25/07/2019 end
+
 }

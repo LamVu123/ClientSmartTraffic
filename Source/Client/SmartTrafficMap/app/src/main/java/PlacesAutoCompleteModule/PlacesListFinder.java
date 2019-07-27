@@ -37,7 +37,7 @@ public class PlacesListFinder {
     }
 
     public void execute() throws UnsupportedEncodingException {
-        listener.onPlacesFinderStart();
+//        listener.onPlacesFinderStart();
         new DownloadRawData().execute(createUrlToPlaces(placeTyping));
     }
 

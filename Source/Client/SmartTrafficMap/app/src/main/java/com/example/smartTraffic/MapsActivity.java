@@ -22,6 +22,7 @@ import android.text.TextWatcher;
 import android.view.View;
 import android.view.animation.AlphaAnimation;
 import android.view.animation.Animation;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
@@ -66,6 +67,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private List<Polyline> polylinePaths = new ArrayList<>();
     private ProgressDialog progressDialog;
     private String placeTyping;
+    Boolean checkStatusListView = false;
+    boolean checkWhereTyping = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -81,11 +84,14 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         } else {
             getCurrentLocation();
         }
+
         listView = (ListView) findViewById(R.id.listView);
         btnFindPath = (Button) findViewById(R.id.btnFindPath);
         etOrigin = (EditText) findViewById(R.id.etOrigin);
         etDestination = (EditText) findViewById(R.id.etDestination);
 
+
+        //start event
         btnFindPath.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -93,7 +99,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 animation.setDuration(150);
                 btnFindPath.startAnimation(animation);
                 sendRequest();
-                CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(currentLocation, 19);
+                CameraUpdate cameraUpdate = CameraUpdateFactory
+                        .newLatLngZoom(currentLocation, 19);
                 mMap.animateCamera(cameraUpdate);
 
             }
@@ -112,21 +119,14 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
             @Override
             public void afterTextChanged(Editable s) {
+                if(checkStatusListView) {
+                    checkStatusListView=false;
+                    return;
+                }
                 placeTyping = etDestination.getText().toString();
+                checkWhereTyping = false;
                 autoCompletePlacesRequest();
-//                Log.d("test Text change","text change");
-//                Timer timer = new Timer();
-//                timer.cancel();
-//                timer = new Timer();
-//                timer.schedule(
-//                        new TimerTask() {
-//                            @Override
-//                            public void run() {
-//
-//                            }
-//                        },
-//                        5000
-//                );
+
             }
         });
         etOrigin.addTextChangedListener(new TextWatcher() {
@@ -142,25 +142,39 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
             @Override
             public void afterTextChanged(Editable s) {
+                if(checkStatusListView) {
+                    checkStatusListView=false;
+                    return;
+                }
                 placeTyping = etOrigin.getText().toString();
+                checkWhereTyping = true;
                 autoCompletePlacesRequest();
             }
         });
+        listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                checkStatusListView = true;
+                String item = (String) parent.getAdapter().getItem(position);
+                if(checkWhereTyping){
+                    etOrigin.setText(item);
+                    etOrigin.setSelection(etOrigin.getText().length());
+                } else{
+                    etDestination.setText(item);
+                    etDestination.setSelection(etDestination.getText().length());
+                }
+
+                listView.setVisibility(View.GONE);
+
+            }
+        });
+
     }
 
-    private void setEmptyListView(){
-        String[] empty= {};
-        try {
-            ArrayAdapter adapter = new ArrayAdapter(getApplicationContext(),
-                    R.layout.listview_place,empty);
-            listView.setAdapter(adapter);
-        } catch (Exception e){
-            e.printStackTrace();
-        }
-    }
+
     private void autoCompletePlacesRequest() {
         if(placeTyping.isEmpty()){
-            setEmptyListView();
+            listView.setVisibility(View.GONE);
             return;
         }
         try {
@@ -178,6 +192,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     @Override
     public void onPlacesFinderSuccess(List<String> listPlaces) {
         try {
+            listView.setVisibility(View.VISIBLE);
             ArrayAdapter adapter = new ArrayAdapter(getApplicationContext(),
                     R.layout.listview_place,listPlaces);
             listView.setAdapter(adapter);

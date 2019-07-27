@@ -1,5 +1,4 @@
-package Modules;
-//ágdahg
+package DirectionModule;
 import android.os.AsyncTask;
 
 import com.google.android.gms.maps.model.LatLng;
@@ -34,15 +33,18 @@ public class DirectionFinder {
 
     public void execute() throws UnsupportedEncodingException {
         listener.onDirectionFinderStart();
-        new DownloadRawData().execute(createUrl());
+        new DownloadRawData().execute(createUrlToDirection());
     }
 
-    private String createUrl() throws UnsupportedEncodingException {
+    //create url to direction
+    private String createUrlToDirection() throws UnsupportedEncodingException {
         String urlOrigin = URLEncoder.encode(origin, "utf-8");
         String urlDestination = URLEncoder.encode(destination, "utf-8");
 
         return DIRECTION_URL_API + "origin=" + urlOrigin + "&destination=" + urlDestination + "&key=" + GOOGLE_API_KEY;
     }
+
+
 
     private class DownloadRawData extends AsyncTask<String, Void, String> {
 

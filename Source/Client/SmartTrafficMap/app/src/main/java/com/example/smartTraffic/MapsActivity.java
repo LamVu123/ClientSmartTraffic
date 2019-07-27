@@ -17,9 +17,15 @@ import android.provider.Settings;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentActivity;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.View;
+import android.view.animation.AlphaAnimation;
+import android.view.animation.Animation;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -38,26 +44,28 @@ import com.google.android.gms.maps.model.PolylineOptions;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
 
-import Modules.*;
+import DirectionModule.*;
+import PlacesAutoCompleteModule.*;
 
-public class MapsActivity extends FragmentActivity implements OnMapReadyCallback, DirectionFinderListener {
+public class MapsActivity extends FragmentActivity implements OnMapReadyCallback,
+        DirectionFinderListener, PlacesFinderListener{
 
     private GoogleMap mMap;
     private static final int REQUEST_CODE = 0;
     private static final String TAG = "MapsActivity";
     public static LatLng currentLocation;
     private Button btnFindPath;
-    private Button btnAcc;
-    private Button btnRoadName;
+    private ListView listView;
     private EditText etOrigin;
     private EditText etDestination;
     private List<Marker> originMarkers = new ArrayList<>();
     private List<Marker> destinationMarkers = new ArrayList<>();
     private List<Polyline> polylinePaths = new ArrayList<>();
     private ProgressDialog progressDialog;
-    private String currentCoordinate;
-    private String currentRoad;
+    private String placeTyping;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -67,44 +75,123 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
-
         turnOnGPS();
         if (Build.VERSION.SDK_INT >= 23) {
             setPermission();
         } else {
             getCurrentLocation();
         }
-
+        listView = (ListView) findViewById(R.id.listView);
         btnFindPath = (Button) findViewById(R.id.btnFindPath);
-        btnAcc = (Button) findViewById(R.id.btnAcc);
-        btnRoadName = (Button) findViewById(R.id.btnRoadName);
         etOrigin = (EditText) findViewById(R.id.etOrigin);
         etDestination = (EditText) findViewById(R.id.etDestination);
 
         btnFindPath.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                Animation animation = new AlphaAnimation(1.1f, 0.3f);
+                animation.setDuration(150);
+                btnFindPath.startAnimation(animation);
                 sendRequest();
+                CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(currentLocation, 19);
+                mMap.animateCamera(cameraUpdate);
+
             }
         });
 
-        btnAcc.setOnClickListener(new View.OnClickListener() {
+        etDestination.addTextChangedListener(new TextWatcher() {
             @Override
-            public void onClick(View v) {
-                AlertDialog.Builder alert = new AlertDialog.Builder(MapsActivity.this);
-                alert.setTitle("Smart Traffic");
-                alert.setMessage("Hiện thị đồ thị realtime - ku Trí");
-                alert.setPositiveButton("OK", null);
-                alert.show();
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                placeTyping = etDestination.getText().toString();
+                autoCompletePlacesRequest();
+//                Log.d("test Text change","text change");
+//                Timer timer = new Timer();
+//                timer.cancel();
+//                timer = new Timer();
+//                timer.schedule(
+//                        new TimerTask() {
+//                            @Override
+//                            public void run() {
+//
+//                            }
+//                        },
+//                        5000
+//                );
             }
         });
-        btnRoadName.setOnClickListener(new View.OnClickListener() {
+        etOrigin.addTextChangedListener(new TextWatcher() {
             @Override
-            public void onClick(View v) {
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
 
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                placeTyping = etOrigin.getText().toString();
+                autoCompletePlacesRequest();
             }
         });
     }
+
+    private void setEmptyListView(){
+        String[] empty= {};
+        try {
+            ArrayAdapter adapter = new ArrayAdapter(getApplicationContext(),
+                    R.layout.listview_place,empty);
+            listView.setAdapter(adapter);
+        } catch (Exception e){
+            e.printStackTrace();
+        }
+    }
+    private void autoCompletePlacesRequest() {
+        if(placeTyping.isEmpty()){
+            setEmptyListView();
+            return;
+        }
+        try {
+            new PlacesListFinder(this,placeTyping).execute();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void onPlacesFinderStart() {
+
+    }
+
+    @Override
+    public void onPlacesFinderSuccess(List<String> listPlaces) {
+        try {
+            ArrayAdapter adapter = new ArrayAdapter(getApplicationContext(),
+                    R.layout.listview_place,listPlaces);
+            listView.setAdapter(adapter);
+        } catch (Exception e){
+            e.printStackTrace();
+        }
+    }
+//    private void callAlert(String mess){
+//        AlertDialog.Builder alert = new AlertDialog.Builder(MapsActivity.this);
+//        alert.setTitle("ok");
+//        alert.setMessage(mess);
+//        alert.setPositiveButton("OK", null);
+//        alert.show();
+//    }
 
     //set permission to access location and getCurrentLocation
     private void setPermission() {
@@ -129,7 +216,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         getCurrentLocation();
     }
 
-    // Check gps, if turn off => turn on request.
+    // Check gps, if turn off => request turn on .
     private void turnOnGPS() {
         //get gps status
         String provider = Settings.Secure.
@@ -169,7 +256,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 currentLocation = new LatLng(location.getLatitude(), location.getLongitude());
                 //Log.d(TAG, "onLocateChange: "+ currentLocation);
                 //Toast.makeText(MapsActivity.this, "kinh độ - vĩ độ: " + currentLocation.toString(), Toast.LENGTH_LONG).show();
-                currentCoordinate = currentLocation.toString();
             }
 
             @Override
@@ -209,34 +295,18 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
      * it inside the SupportMapFragment. This method will only be triggered once the user has
      * installed Google Play services and returned to the app.
      */
-    @Override
-    public void onMapReady(GoogleMap googleMap) {
-        mMap = googleMap;
 
-        // Add a marker in Sydney and move the camera
-        LatLng fptUniLocal = new LatLng(21.013138, 105.526876);
-        mMap.addMarker(new MarkerOptions().position(fptUniLocal).title("Marker in FPT University"));
-        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(fptUniLocal, 15));
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
-                && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            return;
-        }
-        mMap.setMyLocationEnabled(true);
-        if (currentLocation != null) {
-            CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(currentLocation, 15);
-            mMap.animateCamera(cameraUpdate);
-        }
-    }
 
     private void sendRequest() {
         String origin = etOrigin.getText().toString();
         String destination = etDestination.getText().toString();
+
         if (origin.isEmpty()) {
-            Toast.makeText(this, "Please enter origin address!", Toast.LENGTH_SHORT).show();
-            return;
+            origin = currentLocation.latitude + ", "
+                    + currentLocation.longitude;
         }
         if (destination.isEmpty()) {
-            Toast.makeText(this, "Please enter destination address!", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Please enter your destination!", Toast.LENGTH_LONG).show();
             return;
         }
         //Log.d(TAG,"etOrigin: "+origin);
@@ -288,7 +358,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             originMarkers.add(mMap.addMarker(new MarkerOptions()
                     .icon(BitmapDescriptorFactory.fromResource(R.drawable.start_blue))
                     .title(route.startAddress)
-                    .position(route.startLocation)));
+                    .position(route.startLocation)
+            ));
             destinationMarkers.add(mMap.addMarker(new MarkerOptions()
                     .icon(BitmapDescriptorFactory.fromResource(R.drawable.end_green))
                     .title(route.endAddress)
@@ -305,4 +376,39 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             polylinePaths.add(mMap.addPolyline(polylineOptions));
         }
     }
+
+    @Override
+    public void onMapReady(GoogleMap googleMap) {
+        mMap = googleMap;
+
+        // Add a marker in FPT University
+        LatLng fptUniLocal = new LatLng(21.013138, 105.526876);
+        //mMap.addMarker(new MarkerOptions().position(fptUniLocal).title("Marker in FPT University"));
+        //mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(fptUniLocal, 15));
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
+                && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            return;
+        }
+
+        mMap.setMyLocationEnabled(true);
+        if (currentLocation != null) {
+            //mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(currentLocation, 15));
+            CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(currentLocation, 15);
+            mMap.animateCamera(cameraUpdate);
+        } else {
+            mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(fptUniLocal, 15));
+        }
+
+        mMap.setOnMapClickListener(new GoogleMap.OnMapClickListener() {
+            @Override
+            public void onMapClick(LatLng latLng) {
+                AlertDialog.Builder alert = new AlertDialog.Builder(MapsActivity.this);
+                alert.setTitle("Event 1 Điểm trên map");
+                alert.setPositiveButton("OK", null);
+                alert.show();
+            }
+        });
+    }
+
+
 }

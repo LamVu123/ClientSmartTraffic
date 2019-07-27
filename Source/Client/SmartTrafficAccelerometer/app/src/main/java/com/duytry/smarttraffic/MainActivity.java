@@ -155,7 +155,41 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         initLayout();
 
         //create folder to save data
-        makeDirectory();
+        this.dataDirectory = makeDirectory();
+        File file = new File(dataDirectory);
+        //check old data
+        if(file != null && file.exists()){
+            final String[] oldDatas = file.list();
+            if(oldDatas.length >= 1){
+                AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                builder.setTitle(R.string.overwrite_data_warning);
+                builder.setMessage(R.string.overwrite_data_warning_message);
+                builder.setCancelable(true);
+                builder.setPositiveButton(R.string.ok_button, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        for ( String oldFileStr : oldDatas
+                             ) {
+                            File oldFile = new File(oldFileStr);
+                            boolean deleted = oldFile.delete();
+                            if(!deleted){
+                                Toast.makeText(MainActivity.this, "Delete file error", Toast.LENGTH_LONG).show();
+                            }
+                        }
+
+                    }
+                });
+                builder.setNegativeButton(R.string.keep_button, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+
+                    }
+                });
+
+                AlertDialog dlg = builder.create();
+                dlg.show();
+            }
+        }
 
         //init graph
         initChart();
@@ -618,7 +652,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     /**
      * Create folder to save data
      */
-    private void makeDirectory(){
+    private String makeDirectory(){
         String road = userInformation.getString(Common.ROAD_PREFERENCES_KEY, Common.UNDEFINED);
         StringBuilder directory = new StringBuilder();
         directory.append(Environment.getExternalStorageDirectory().getAbsolutePath());
@@ -630,11 +664,11 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         }
         directory.append(File.separator);
         directory.append(road);
-        this.dataDirectory = directory.toString();
-        folder = new File(this.dataDirectory.toString());
+        folder = new File(directory.toString());
         if (!folder.exists()) {
             folder.mkdirs();
         }
+        return directory.toString();
     }
 
     /**
@@ -653,7 +687,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         Log.d(TAG, "Saving data to filename: " + fileName);
 
         if(TextUtils.isEmpty(dataDirectory)){
-            makeDirectory();
+            this.dataDirectory = makeDirectory();
         }
         File file = new File(dataDirectory, fileName);
         if (!file.exists()) {

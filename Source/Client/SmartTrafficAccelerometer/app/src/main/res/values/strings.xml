@@ -29,4 +29,9 @@
     <string name="invalid_username">Not a valid username</string>
     <string name="invalid_password">Password must be >5 characters</string>
     <string name="login_failed">"Login failed"</string>
+    <string name="overwrite_data_warning">Warning</string>
+    <string name="overwrite_data_warning_message">This road contains old data. Do you want to delete?</string>
+    <string name="ok_button">OK</string>
+    <string name="keep_button">Keep it</string>
+
 </resources>

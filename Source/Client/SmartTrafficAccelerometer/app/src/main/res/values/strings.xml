@@ -1,3 +1,37 @@
 <resources>
     <string name="app_name">SmartTraffic</string>
+    <string name="hint_editText_name">Enter name</string>
+    <string name="hint_editText_road">Enter road</string>
+    <string name="text_btn_start">Start</string>
+    <string name="text_btn_push_data">Save</string>
+    <string name="btn_shock_point">Shock Point</string>
+    <string name="btn_speed_up">Speed Up</string>
+    <string name="btn_brake_down">Brake Down</string>
+    <string name="btn_parking">Parking</string>
+    <string name="textView_speed_label">Speed</string>
+    <string name="btn_finish">Finish</string>
+    <string-array name="speeds_array">
+        <item>50km/h</item>
+        <item>60km/h</item>
+        <item>70km/h</item>
+        <item>80km/h</item>
+        <item>90km/h</item>
+        <item>100km/h</item>
+        <item>110km/h</item>
+        <item>120km/h</item>
+    </string-array>
+    <string name="title_activity_login">Sign in</string>
+    <string name="prompt_email">Username</string>
+    <string name="prompt_password">Password</string>
+    <string name="action_sign_in">Sign in</string>
+    <string name="action_sign_in_short">Sign in</string>
+    <string name="welcome">"Welcome !"</string>
+    <string name="invalid_username">Not a valid username</string>
+    <string name="invalid_password">Password must be >5 characters</string>
+    <string name="login_failed">"Login failed"</string>
+    <string name="overwrite_data_warning">Warning</string>
+    <string name="overwrite_data_warning_message">This road contains old data. Do you want to delete?</string>
+    <string name="ok_button">OK</string>
+    <string name="keep_button">Keep it</string>
+
 </resources>

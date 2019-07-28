@@ -1,6 +1,7 @@
 package com.example.smartTraffic;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.app.ProgressDialog;
 import android.content.DialogInterface;
@@ -628,6 +629,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
     }
 
+    @SuppressLint("MissingPermission")
     private void startLocationUpdates() {
         createLocationRequest();
         mFusedLocationProviderClient.requestLocationUpdates(locationRequest,

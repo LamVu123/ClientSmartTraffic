@@ -1,4 +1,4 @@
-package Modules;
+package DirectionModule;
 
 import java.util.List;
 

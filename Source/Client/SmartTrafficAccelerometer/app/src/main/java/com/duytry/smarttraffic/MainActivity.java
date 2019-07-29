@@ -1,6 +1,7 @@
 package com.duytry.smarttraffic;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.content.ContentResolver;
 import android.content.Context;
@@ -47,6 +48,13 @@ import com.github.mikephil.charting.data.LineDataSet;
 import com.github.mikephil.charting.interfaces.datasets.ILineDataSet;
 import com.github.nkzawa.socketio.client.IO;
 import com.github.nkzawa.socketio.client.Socket;
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationCallback;
+import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationResult;
+import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -63,6 +71,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.List;
 import java.util.Queue;
 
 
@@ -88,9 +97,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     Intent myFileIntent;
     private static ArrayList<MyLocation> locationData;
     private static ArrayList<String> timeData;
-    private static double longitude;
-    private static double latitude;
-
 
     private static String dataDirectory;
 
@@ -105,6 +111,10 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private View.OnClickListener saveShockPointListener, saveSpeedUpListener, saveBrakeDownListener, saveParkingListener;
     private SharedPreferences userInformation;
     SimpleDateFormat simpleDateFormat;
+
+    private boolean mLocationPermissionGranted;
+    private FusedLocationProviderClient mFusedLocationProviderClient;
+    private Location mLastKnownLocation;
 
 
 //    Date startDate;
@@ -137,15 +147,33 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             ActivityCompat.requestPermissions(this, PERMISSIONS, REQUEST_PERMISSION_REQUEST_CODE);
         }
 
+        mLocationPermissionGranted = true;
+        mFusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
+
         //turn on GPS
         turnOnGPS();
-        getCurrentLocation();
+        startLocationUpdates();
 
         //get sensor
         sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
-        accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION);
-        if (accelerometer != null) {
-            sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_GAME);
+        List<Sensor> sensors = sensorManager.getSensorList(Sensor.TYPE_ACCELEROMETER);
+        if (sensors.isEmpty()) {
+            AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
+            builder.setTitle(R.string.sensor_error_tittle);
+            builder.setMessage(R.string.sensor_error_message);
+            builder.setCancelable(true);
+            builder.setNegativeButton("OK", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                }
+            });
+            AlertDialog dialog = builder.create();
+            dialog.show();
+        } else {
+            accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION);
+            if(accelerometer != null){
+                sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_GAME);
+            }
         }
 
         simpleDateFormat = new SimpleDateFormat(DATE_FORMAT);
@@ -156,10 +184,26 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
         //create folder to save data
         this.dataDirectory = makeDirectory();
-        File file = new File(dataDirectory);
+        checkOldData();
+
+        //init graph
+        initChart();
+
+        locationData = new ArrayList<>();
+        timeData = new ArrayList<>();
+
+        //cuongvv start
+        mSocket.connect();
+        //cuongvv end
+
+//        startDate = new Date();
+    }
+
+    private void checkOldData(){
+        final File fileDirectory = new File(dataDirectory);
         //check old data
-        if(file != null && file.exists()){
-            final String[] oldDatas = file.list();
+        if(fileDirectory != null && fileDirectory.exists()){
+            final String[] oldDatas = fileDirectory.list();
             if(oldDatas.length >= 1){
                 AlertDialog.Builder builder = new AlertDialog.Builder(this);
                 builder.setTitle(R.string.overwrite_data_warning);
@@ -169,8 +213,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                         for ( String oldFileStr : oldDatas
-                             ) {
-                            File oldFile = new File(oldFileStr);
+                        ) {
+                            File oldFile = new File(fileDirectory.getAbsolutePath() + File.separator + oldFileStr);
                             boolean deleted = oldFile.delete();
                             if(!deleted){
                                 Toast.makeText(MainActivity.this, "Delete file error", Toast.LENGTH_LONG).show();
@@ -190,22 +234,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 dlg.show();
             }
         }
-
-        //init graph
-        initChart();
-
-        locationData = new ArrayList<>();
-        timeData = new ArrayList<>();
-
-        //cuongvv start
-        mSocket.connect();
-        //sent file
-
-
-        //mSocket.on("dataResults",onMessage_Results);
-        //cuongvv end
-
-//        startDate = new Date();
     }
 //cuongvv start
     private void sendFileToServer(String filePath){
@@ -576,7 +604,12 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         if (locationData == null) {
             locationData = new ArrayList<>();
         }
-        locationData.add(new MyLocation(latitude, longitude));
+        if(mLastKnownLocation == null){
+            locationData.add(new MyLocation(0, 0));
+        } else {
+            locationData.add(new MyLocation(mLastKnownLocation.getLatitude(), mLastKnownLocation.getLongitude()));
+        }
+
     }
 
     private void addTime(){
@@ -608,6 +641,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         for ( String file : files ) {
             sendFileToServer(file);
         }
+        mSocket.emit("end_send_file", "true");
 
     }
 
@@ -882,7 +916,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     @Override
     protected void onPause () {
         super.onPause();
-        sensorManager.unregisterListener(this);
     }
 
 
@@ -892,12 +925,12 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         super.onDestroy();
 
         mSocket.disconnect();
+        mSocket.off();
     }
 
     @Override
     protected void onResume () {
         super.onResume();
-        sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_GAME);
     }
 
     @Override
@@ -968,42 +1001,64 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             alertDialog.show();
         }
     }
-    private void getCurrentLocation() {
 
-        LocationManager locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
-        LocationListener locationListener = new LocationListener() {
-            @Override
-            public void onLocationChanged(Location location) {
-                MainActivity.latitude = location.getLatitude();
-                MainActivity.longitude = location.getLongitude();
-                Toast.makeText(MainActivity.this, "kinh độ: " + MainActivity.latitude
-                        + "- vĩ độ: " + MainActivity.longitude, Toast.LENGTH_LONG).show();
+    private void getDeviceLocation() {
+        /*
+         * Get the best and most recent location of the device, which may be null in rare
+         * cases when a location is not available.
+         */
+        try {
+            if (mLocationPermissionGranted) {
+                Task locationResult = mFusedLocationProviderClient.getLastLocation();
+                locationResult.addOnCompleteListener(this, new OnCompleteListener<Location>() {
+                    @Override
+                    public void onComplete(@NonNull Task<Location> task) {
+                        if (task.isSuccessful()) {
+                            // Set the map's camera position to the current location of the device.
+                            mLastKnownLocation = task.getResult();
+                        } else {
+                            Log.d(TAG, "Current location is null.");
+                            Log.e(TAG, "Exception: %s", task.getException());
+                        }
+                    }
+                });
             }
+        } catch (SecurityException e) {
+            Log.e("Exception: %s", e.getMessage());
+        }
+    }
 
-            @Override
-            public void onStatusChanged(String provider, int status, Bundle extras) {
 
+
+    protected LocationRequest createLocationRequest() {
+        LocationRequest locationRequest = LocationRequest.create();
+        locationRequest.setInterval(1000);
+        locationRequest.setFastestInterval(500);
+        locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+        return locationRequest;
+    }
+
+    @SuppressLint("MissingPermission")
+    private void startLocationUpdates() {
+        mFusedLocationProviderClient.requestLocationUpdates(createLocationRequest(),
+                locationCallback,
+                null /* Looper */);
+    }
+
+    private LocationCallback locationCallback = new LocationCallback() {
+        @Override
+        public void onLocationResult(LocationResult locationResult) {
+            if (locationResult == null) {
+                return;
             }
-
-            @Override
-            public void onProviderEnabled(String provider) {
-
-            }
-
-            @Override
-            public void onProviderDisabled(String provider) {
-
+            for (Location location : locationResult.getLocations()) {
+                mLastKnownLocation = location;
             }
         };
-        if ((ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
-                != PackageManager.PERMISSION_GRANTED)
-                && (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
-                != PackageManager.PERMISSION_GRANTED)
-        ) {
-            return;
-        }
-        locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER,
-                1000, 10,
-                locationListener);
+    };
+
+    private void stopLocationUpdates() {
+        mFusedLocationProviderClient.removeLocationUpdates(locationCallback);
     }
+
 }

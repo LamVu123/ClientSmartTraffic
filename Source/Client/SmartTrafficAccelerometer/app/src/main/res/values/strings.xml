@@ -27,11 +27,16 @@
     <string name="action_sign_in_short">Sign in</string>
     <string name="welcome">"Welcome !"</string>
     <string name="invalid_username">Not a valid username</string>
-    <string name="invalid_password">Password must be >5 characters</string>
-    <string name="login_failed">"Login failed"</string>
+    <string name="login_failed_tittle_dialog">Opps</string>
+    <string name="login_failed">Login failed</string>
+    <string name="login_error">Problem when connecting to server, please try again later</string>
+    <string name="login_failed_message">Please check your username and password.</string>
     <string name="overwrite_data_warning">Warning</string>
     <string name="overwrite_data_warning_message">This road contains old data. Do you want to delete?</string>
     <string name="ok_button">OK</string>
     <string name="keep_button">Keep it</string>
+    <string name="invalid_password">Password must be >5 characters</string>
+    <string name="sensor_error_tittle">Error</string>
+    <string name="sensor_error_message">Problem with sensors in this device</string>
 
 </resources>

@@ -64,9 +64,10 @@ import java.util.TimerTask;
 
 import DirectionModule.*;
 import PlacesAutoCompleteModule.*;
+import AddressModule.*;
 
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback,
-        DirectionFinderListener, PlacesFinderListener {
+        DirectionFinderListener, PlacesFinderListener, AddressFinderListener {
 
     private GoogleMap mMap;
     private static final int REQUEST_CODE = 0;
@@ -87,7 +88,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private boolean mLocationPermissionGranted;
     private Location mLastKnownLocation;
     private FusedLocationProviderClient mFusedLocationProviderClient;
-    private static final int DEFAULT_ZOOM = 15;
+    private static final int DEFAULT_ZOOM = 16;
+    private static final int DIRECTION_ZOOM = 19;
     private final LatLng mDefaultLocation = new LatLng(21.013138, 105.526876);
     private static final int WARNING_DISTANCE = 400;
     private static boolean isWarnningOn = false;
@@ -112,7 +114,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         if (Build.VERSION.SDK_INT >= 23) {
             setPermission();
         } else {
-            //getCurrentLocation();
             getDeviceLocation();
         }
 
@@ -131,7 +132,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 btnFindPath.startAnimation(animation);
                 sendRequestDirection();
                 CameraUpdate cameraUpdate = CameraUpdateFactory
-                        .newLatLngZoom(currentLocation, 19);
+                        .newLatLngZoom(currentLocation, DIRECTION_ZOOM);
                 mMap.animateCamera(cameraUpdate);
 
             }
@@ -199,7 +200,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
             }
         });
-
         shockingPointAheads = new ArrayList<>();
         incomingShockingPoints = new ArrayList<>();
     }
@@ -366,7 +366,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         destinationMarkers = new ArrayList<>();
 
         for (Route route : routes) {
-            mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(route.startLocation, 15));
+            mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(route.startLocation, DIRECTION_ZOOM));
             ((TextView) findViewById(R.id.tvDuration)).setText(route.duration.text);
             ((TextView) findViewById(R.id.tvDistance)).setText(route.distance.text);
 
@@ -392,10 +392,12 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }
     }
 
+    Marker markerPin;
+
     @Override
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
-
+        mMap.setMyLocationEnabled(true);
         // Add a marker in FPT University
         //LatLng fptUniLocal = new LatLng(21.013138, 105.526876);
         //mMap.addMarker(new MarkerOptions().position(fptUniLocal).title("Marker in FPT University"));
@@ -404,15 +406,42 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             return;
         }
-
-
         mMap.setOnMapClickListener(new GoogleMap.OnMapClickListener() {
             @Override
             public void onMapClick(LatLng latLng) {
-                AlertDialog.Builder alert = new AlertDialog.Builder(MapsActivity.this);
-                alert.setTitle("Event 1 Điểm trên map");
-                alert.setPositiveButton("OK", null);
-                alert.show();
+                String mlatlng = String.valueOf(latLng.latitude)+", "+latLng.longitude;
+                onAddressFinderStart(mlatlng);
+                markerPin = mMap.addMarker(new MarkerOptions()
+                        .position(latLng));
+                markerPin.setIcon(BitmapDescriptorFactory.fromResource(R.drawable.ic_markerpin));
+            }
+        });
+
+        mMap.setOnMarkerClickListener(new GoogleMap.OnMarkerClickListener() {
+            @Override
+            public boolean onMarkerClick(final Marker marker) {
+                AlertDialog.Builder builder = new AlertDialog.Builder(MapsActivity.this);
+                builder.setTitle("Road: "+marker.getTitle());
+                builder.setMessage("Address: "+marker.getSnippet());
+                builder.setPositiveButton("Delete Point", new DialogInterface.OnClickListener() {
+
+                    public void onClick(DialogInterface dialog, int which) {
+                        marker.remove();
+                        dialog.dismiss();
+                    }
+                });
+
+                builder.setNegativeButton("Close", new DialogInterface.OnClickListener() {
+
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        // Do nothing
+                        dialog.dismiss();
+                    }
+                });
+                AlertDialog alert = builder.create();
+                builder.show();
+                return false;
             }
         });
         //dunglh 25/07 start
@@ -667,11 +696,27 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         super.onPause();
         stopLocationUpdates();
     }
+//dunglh 25/07/2019 end
 
     private void stopLocationUpdates() {
         mFusedLocationProviderClient.removeLocationUpdates(locationCallback);
     }
 
-    //dunglh 25/07/2019 end
+    @Override
+    public void onAddressFinderStart(String latlng) {
+        try {
+            new AddressFinder(latlng,this).execute();
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void onAddressFinderSuccess(String currentLongNameRoad, String currentShortNameRoad, String address) {
+
+        markerPin.setTitle(currentLongNameRoad);
+        markerPin.setSnippet(address);
+        markerPin.showInfoWindow();
+    }
 
 }

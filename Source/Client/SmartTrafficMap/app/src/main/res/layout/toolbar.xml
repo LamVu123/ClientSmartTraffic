@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<android.support.v7.widget.Toolbar xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:local="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/toolbar"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@color/colorPrimary"
+    android:minHeight="?attr/actionBarSize"
+    local:navigationIcon="?attr/homeAsUpIndicator"
+    local:popupTheme="@android:style/Theme.Material.NoActionBar"
+    local:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
+    local:title="Smart Traffic Map"
+    local:titleTextColor="@color/common_google_signin_btn_text_dark">
+
+    <ImageView
+        android:id="@+id/imageView"
+        android:layout_width="35dp"
+        android:layout_height="35dp"
+        android:layout_marginLeft="50dp"
+        android:src="@drawable/ic_logo" />
+</android.support.v7.widget.Toolbar>

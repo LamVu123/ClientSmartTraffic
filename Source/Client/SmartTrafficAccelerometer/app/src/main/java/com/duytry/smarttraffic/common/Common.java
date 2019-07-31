@@ -27,6 +27,9 @@ public final class Common {
     public static final String OPEN_FILE_ERROR_MESSAGE = "Unexpected error when open file!";
     public static final String WRONG_FILE_FORMAT_ERROR_MESSAGE = "The file is not right-format. Please choose another file!";
 
+    public static final String DATE_INPUT_FORMAT = "yyyyMMddhhmmss";
+    public static final String DATE_OUTPUT_FORMAT = "hh:mm:ss dd/MM/yyyy";
+
     public static final String md5(final String s) {
         final String MD5 = "MD5";
         try {

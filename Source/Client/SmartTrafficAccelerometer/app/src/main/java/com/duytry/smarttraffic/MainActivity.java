@@ -3,6 +3,8 @@ package com.duytry.smarttraffic;
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
+import android.arch.lifecycle.MutableLiveData;
+import android.arch.lifecycle.Observer;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -24,6 +26,7 @@ import android.provider.Settings;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.app.FragmentManager;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.text.TextUtils;
@@ -37,6 +40,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.duytry.smarttraffic.common.Common;
+import com.duytry.smarttraffic.dialog.MyDialogFragment;
 import com.duytry.smarttraffic.entity.MyLocation;
 import com.github.mikephil.charting.charts.LineChart;
 import com.github.mikephil.charting.components.Legend;
@@ -80,7 +84,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private static final int REQUEST_PERMISSION_REQUEST_CODE = 1000;
     private static final int INITIAL_REQUEST=1337;
     private static final int NUM_OF_ENTRY = 1000;
-    private static final String DATE_FORMAT = "yyyyMMddhhmmss";
     private static final String TAG = "MainActivity";
     private static final int MESSAGE_REQUEST = 01;
     private EditText fileNameResult;
@@ -91,7 +94,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private SensorManager sensorManager;
     private Sensor accelerometer;
     private LineChart mChartX, mChartY, mChartZ;
-    private boolean isRunning = true;
+    private MutableLiveData<Boolean> isRunning = new MutableLiveData<>();
     private boolean onLoadFile = false;
     private int idLoadFile = 0;
     Intent myFileIntent;
@@ -102,6 +105,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     private Button btnOpen, btnStop, btnResume, btnSave;
     private Button btnFinish;
+    private Button btnManage;
     private Button btnShockPoint, btnSpeedUp, btnBrakeDown, btnParking;
     private Spinner spinnerSpeed;
     private TextView textViewUserInfo;
@@ -136,6 +140,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        isRunning.postValue(false);
         //request permission
         String[] PERMISSIONS = {
                 Manifest.permission.WRITE_EXTERNAL_STORAGE,
@@ -156,27 +161,28 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
         //get sensor
         sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
-        List<Sensor> sensors = sensorManager.getSensorList(Sensor.TYPE_ACCELEROMETER);
+        List<Sensor> sensors = sensorManager.getSensorList(Sensor.TYPE_LINEAR_ACCELERATION);
         if (sensors.isEmpty()) {
-            AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
-            builder.setTitle(R.string.sensor_error_tittle);
-            builder.setMessage(R.string.sensor_error_message);
-            builder.setCancelable(true);
-            builder.setNegativeButton("OK", new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface dialog, int which) {
-                }
-            });
-            AlertDialog dialog = builder.create();
-            dialog.show();
+            sensors = sensorManager.getSensorList(Sensor.TYPE_ACCELEROMETER);
+            if (sensors.isEmpty()) {
+                AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
+                builder.setTitle(R.string.sensor_error_tittle);
+                builder.setMessage(R.string.sensor_error_message);
+                builder.setCancelable(true);
+                builder.setNegativeButton("OK", null);
+                AlertDialog dialog = builder.create();
+                dialog.show();
+            } else {
+                accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+            }
         } else {
             accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION);
-            if(accelerometer != null){
-                sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_GAME);
-            }
+        }
+        if(accelerometer != null){
+            sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_GAME);
         }
 
-        simpleDateFormat = new SimpleDateFormat(DATE_FORMAT);
+        simpleDateFormat = new SimpleDateFormat(Common.DATE_INPUT_FORMAT);
         userInformation = getSharedPreferences(Common.PREFERENCES,MODE_PRIVATE);
 
         //init layout
@@ -196,6 +202,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         mSocket.connect();
         //cuongvv end
 
+        isRunning.postValue(true);
 //        startDate = new Date();
     }
 
@@ -297,7 +304,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             public void onClick(View v) {
                 Log.d(TAG, "Button Stop clicked");
                 sensorManager.unregisterListener(MainActivity.this);
-                isRunning = false;
+                isRunning.postValue(false);
             }
         };
         btnStop.setOnClickListener(stopListener);
@@ -309,7 +316,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             public void onClick(View v) {
                 Log.d(TAG, "Button Resume clicked");
                 sensorManager.registerListener(MainActivity.this, accelerometer, SensorManager.SENSOR_DELAY_GAME);
-                isRunning = true;
+                isRunning.postValue(true);
             }
         };
         btnResume.setOnClickListener(resumeListener);
@@ -330,6 +337,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             @Override
             public void onClick(View v) {
                 Log.d(TAG, "Button Open clicked");
+                isRunning.postValue(false);
                 sensorManager.unregisterListener(MainActivity.this);
                 loadData();
             }
@@ -396,6 +404,31 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             }
         };
         btnFinish.setOnClickListener(finishListener);
+
+        //manage button
+        btnManage = (Button) findViewById(R.id.btn_manage);
+        btnManage.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                goToMapsActivity();
+            }
+        });
+
+        isRunning.observe(this, new Observer<Boolean>() {
+            @Override
+            public void onChanged(@Nullable Boolean isRunning) {
+                if (isRunning == null) {
+                    return;
+                }
+                if (isRunning) {
+                    btnStop.setVisibility(View.VISIBLE);
+                    btnResume.setVisibility(View.GONE);
+                } else {
+                    btnStop.setVisibility(View.GONE);
+                    btnResume.setVisibility(View.VISIBLE);
+                }
+            }
+        });
 
         //user info
         String name = userInformation.getString(Common.NAME_PREFERENCES_KEY, Common.UNDEFINED);
@@ -642,6 +675,11 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             sendFileToServer(file);
         }
         mSocket.emit("end_send_file", "true");
+        FragmentManager fragmentManager = getSupportFragmentManager();
+        MyDialogFragment dialogFragment = new MyDialogFragment();
+        dialogFragment.setTittle("Information");
+        dialogFragment.setMessage("Successfully to save data to server");
+        dialogFragment.show(fragmentManager, "Save data success");
 
     }
 
@@ -744,7 +782,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
             //first row print number of point
             bw.write(String.valueOf(minCount));
-            bw.newLine();
 
             String saveMode = "1";
 
@@ -761,6 +798,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
                 String strTime = timeData.get(i);
 
+                bw.newLine();
                 bw.write(saveMode);
                 bw.write(Common.SPACE_CHARACTER);
 
@@ -783,7 +821,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 bw.write(Common.SPACE_CHARACTER);
 
                 bw.write(Common.SEMICOLON_CHARACTER);
-                bw.newLine();
             }
 
             Log.d(TAG, "Saved data to filename: " + fileName);
@@ -815,8 +852,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     }
 
     private void openFile(@Nullable Intent intentData){
-        sensorManager.unregisterListener(MainActivity.this);
-         isRunning = false;
+//        sensorManager.unregisterListener(MainActivity.this);
          if (intentData != null) {
              Uri uri = intentData.getData();
              ContentResolver res = this.getContentResolver();
@@ -904,7 +940,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     @Override
     public final void onSensorChanged (SensorEvent sensorEvent){
-        if(isRunning){
+        if(isRunning.getValue() != null && isRunning.getValue().booleanValue() == true){
             addEndtryX(sensorEvent);
             addEndtryY(sensorEvent);
             addEndtryZ(sensorEvent);
@@ -1002,34 +1038,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         }
     }
 
-    private void getDeviceLocation() {
-        /*
-         * Get the best and most recent location of the device, which may be null in rare
-         * cases when a location is not available.
-         */
-        try {
-            if (mLocationPermissionGranted) {
-                Task locationResult = mFusedLocationProviderClient.getLastLocation();
-                locationResult.addOnCompleteListener(this, new OnCompleteListener<Location>() {
-                    @Override
-                    public void onComplete(@NonNull Task<Location> task) {
-                        if (task.isSuccessful()) {
-                            // Set the map's camera position to the current location of the device.
-                            mLastKnownLocation = task.getResult();
-                        } else {
-                            Log.d(TAG, "Current location is null.");
-                            Log.e(TAG, "Exception: %s", task.getException());
-                        }
-                    }
-                });
-            }
-        } catch (SecurityException e) {
-            Log.e("Exception: %s", e.getMessage());
-        }
-    }
-
-
-
     protected LocationRequest createLocationRequest() {
         LocationRequest locationRequest = LocationRequest.create();
         locationRequest.setInterval(1000);
@@ -1059,6 +1067,11 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     private void stopLocationUpdates() {
         mFusedLocationProviderClient.removeLocationUpdates(locationCallback);
+    }
+
+    private void goToMapsActivity(){
+        Intent intent = new Intent(getApplicationContext(), MapsActivity.class);
+        startActivity(intent);
     }
 
 }

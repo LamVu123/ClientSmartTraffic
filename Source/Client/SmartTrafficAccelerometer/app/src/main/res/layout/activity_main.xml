@@ -75,25 +75,36 @@
             android:id="@+id/resume"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Resume" />
+            android:text="Resume"
+            android:visibility="visible" />
 
         <Button
             android:id="@+id/stop"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Stop" />
+            android:text="Stop"
+            android:visibility="visible" />
 
         <Button
-        android:id="@+id/btn_push_data"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/text_btn_push_data" />
+            android:id="@+id/btn_push_data"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/text_btn_push_data"
+            android:visibility="visible" />
 
         <Button
             android:id="@+id/open"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Open" />
+            android:text="Open"
+            android:visibility="visible" />
+
+        <Button
+            android:id="@+id/btn_manage"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/btn_manage" />
 
 
     </LinearLayout>

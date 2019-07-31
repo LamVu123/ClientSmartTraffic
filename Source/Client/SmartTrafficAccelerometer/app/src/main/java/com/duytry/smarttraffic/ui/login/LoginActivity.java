@@ -1,6 +1,5 @@
 package com.duytry.smarttraffic.ui.login;
 
-import android.app.Activity;
 import android.app.AlertDialog;
 import android.arch.lifecycle.MutableLiveData;
 import android.arch.lifecycle.Observer;

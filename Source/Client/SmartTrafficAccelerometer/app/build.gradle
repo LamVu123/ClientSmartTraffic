@@ -12,9 +12,7 @@ android {
     }
     buildTypes {
         debug {
-            buildConfigField 'String', "SendDataIp", server_send_data_port
-            buildConfigField 'String', "LoginIp", server_login_port
-            buildConfigField 'String', "AdminActionIP", server_admin_action_port
+            buildConfigField 'String', "SocketIp", server_ip_port
         }
         release {
             minifyEnabled false

@@ -20,21 +20,18 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ProgressBar;
 import android.widget.TextView;
-import android.widget.Toast;
 
-import com.duytry.smarttraffic.BuildConfig;
 import com.duytry.smarttraffic.InformationActivity;
+import com.duytry.smarttraffic.common.MySocketFactory;
 import com.duytry.smarttraffic.R;
 
 import com.duytry.smarttraffic.common.Common;
 import com.github.nkzawa.emitter.Emitter;
-import com.github.nkzawa.socketio.client.IO;
 import com.github.nkzawa.socketio.client.Socket;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.net.URISyntaxException;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -57,6 +54,8 @@ public class LoginActivity extends AppCompatActivity {
     private Button loginButton;
     private ProgressBar loadingProgressBar;
     private SharedPreferences userInformation;
+
+    private Socket mSocket = MySocketFactory.getInstance().getMySocket();
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -145,14 +144,6 @@ public class LoginActivity extends AppCompatActivity {
         });
     }
 
-    private Socket mSocket;
-    {
-        try {
-            mSocket = IO.socket(BuildConfig.LoginIp);
-        } catch (URISyntaxException e) {
-            Toast.makeText(this, e.toString(), Toast.LENGTH_SHORT).show();
-        }
-    }
 
     private Emitter.Listener onMessage_Results = new Emitter.Listener() {
         @Override
@@ -181,10 +172,11 @@ public class LoginActivity extends AppCompatActivity {
 
     private void doLogin(String username, String password){
         isSigningIn = true;
-        mSocket.connect();
+        if(!mSocket.connected()){
+            mSocket.connect();
+        }
         mSocket.emit(USERNAME_EVENT_SOCKET, username);
         mSocket.emit(PASSWORD_EVENT_SOCKET, Common.md5(password));
-
         mSocket.on(LOGIN_RESULT_EVENT_SOCKET, onMessage_Results);
         final Timer t = new Timer();
         t.schedule(new TimerTask() {
@@ -217,17 +209,20 @@ public class LoginActivity extends AppCompatActivity {
         SharedPreferences.Editor prefEditor = userInformation.edit();
         prefEditor.putString(Common.NAME_PREFERENCES_KEY, usernameEditText.getText().toString());
         prefEditor.commit();
-        mSocket.disconnect();
-        mSocket.off();
+        if(mSocket.hasListeners(LOGIN_RESULT_EVENT_SOCKET)){
+            mSocket.off(LOGIN_RESULT_EVENT_SOCKET);
+        }
         Intent intent = new Intent(getApplicationContext(), InformationActivity.class);
-        startActivity(intent);
+        startActivityForResult(intent, 1);
     }
 
     @Override
     protected void onDestroy() {
-        mSocket.disconnect();
         if(mSocket.hasListeners(LOGIN_RESULT_EVENT_SOCKET)){
-            mSocket.off();
+            mSocket.off(LOGIN_RESULT_EVENT_SOCKET);
+        }
+        if(mSocket.connected()){
+            mSocket.disconnect();
         }
         super.onDestroy();
     }

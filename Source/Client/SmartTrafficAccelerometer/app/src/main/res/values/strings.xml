@@ -23,6 +23,7 @@
     <string name="textView_road_name">Name</string>
     <string name="textView_road_name_hint">Road Name</string>
     <string name="btn_save_road">Save</string>
+    <string name="btn_back_from_view_data">Back</string>
     <string-array name="speeds_array">
         <item>50km/h</item>
         <item>60km/h</item>
@@ -56,6 +57,10 @@
     <string name="title_road_empty">Opps</string>
     <string name="message_road_empty">Problem when getting roads from server, please try again</string>
     <string name="message_point_empty">This road contain no data</string>
+    <string name="wrong_file_dialog_message">The file is not right-format. Please choose another file!</string>
+    <string name="wrong_file_dialog_tittle">Opps</string>
+    <string name="push_data_success_tittle">Success</string>
+    <string name="push_data_success_message">Successfully save data to server</string>
 
 
 </resources>

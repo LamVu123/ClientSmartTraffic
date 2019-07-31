@@ -69,7 +69,7 @@ public class InformationActivity extends AppCompatActivity {
 
                 //direct to MainActivity
                 Intent intent = new Intent(InformationActivity.this, MainActivity.class);
-                startActivity(intent);
+                startActivityForResult(intent, 1);
             }
         };
         this.buttonStart.setOnClickListener(startListener);

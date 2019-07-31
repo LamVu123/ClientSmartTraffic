@@ -15,6 +15,7 @@ import android.os.Bundle;
 import android.os.Process;
 import android.provider.Settings;
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentActivity;
 import android.text.Editable;
@@ -59,21 +60,25 @@ import java.io.UnsupportedEncodingException;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
 
 import DirectionModule.*;
 import PlacesAutoCompleteModule.*;
 import AddressModule.*;
+import RoadModule.SnapPointFinder;
+import RoadModule.SnapPointFinderListener;
 
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback,
-        DirectionFinderListener, PlacesFinderListener, AddressFinderListener {
+        DirectionFinderListener, PlacesFinderListener, AddressFinderListener, SnapPointFinderListener {
 
     private GoogleMap mMap;
     private static final int REQUEST_CODE = 0;
     private static final String TAG = "MapsActivity";
     public static LatLng currentLocation;
     private Button btnFindPath;
+    private Button btnSetting;
     private ListView listView;
     private EditText etOrigin;
     private EditText etDestination;
@@ -119,6 +124,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         listView = (ListView) findViewById(R.id.listView);
         btnFindPath = (Button) findViewById(R.id.btnFindPath);
+        btnSetting = (Button) findViewById(R.id.btnSetting);
         etOrigin = (EditText) findViewById(R.id.etOrigin);
         etDestination = (EditText) findViewById(R.id.etDestination);
 
@@ -135,6 +141,22 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                         .newLatLngZoom(currentLocation, DIRECTION_ZOOM);
                 mMap.animateCamera(cameraUpdate);
 
+            }
+        });
+
+        btnSetting.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                try {
+                    Animation animation = new AlphaAnimation(1.1f, 0.3f);
+                    animation.setDuration(150);
+                    btnFindPath.startAnimation(animation);
+                    Intent intent = new Intent(getApplicationContext(), SettingsActivity.class);
+                    intent.putExtra("maptype", mMap.getMapType());
+                    startActivityForResult(intent, 1);
+                }catch (Exception e){
+                    e.printStackTrace();
+                }
             }
         });
 
@@ -202,6 +224,16 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         });
         shockingPointAheads = new ArrayList<>();
         incomingShockingPoints = new ArrayList<>();
+        List<LatLng> listInputPoints = new ArrayList<>();
+        listInputPoints.add(new LatLng(21.003226, 105.663500));
+        listInputPoints.add(new LatLng(21.002905, 105.663350));
+        listInputPoints.add(new LatLng(21.002865, 105.662840));
+        listInputPoints.add(new LatLng(21.003053, 105.661649));
+        listInputPoints.add(new LatLng(21.002858, 105.662652));
+        listInputPoints.add(new LatLng(21.002833, 105.662258));
+        listInputPoints.add(new LatLng(21.002750, 105.661569));
+        onSnapPointFinderStart(listInputPoints);
+
     }
 
 
@@ -719,4 +751,27 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         markerPin.showInfoWindow();
     }
 
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        if (requestCode == 1) {
+            if (resultCode == MapsActivity.RESULT_OK) {
+                int maptype =data.getIntExtra("typeResult",1);
+                mMap.setMapType(maptype);
+            }
+        }
+    }
+
+    @Override
+    public void onSnapPointFinderStart(List<LatLng> listInputPoints) {
+        try {
+            new SnapPointFinder(this, listInputPoints).execute();
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void onSnapPointFinderSuccess(List<LatLng> listOutputPoints) {
+        //đã test ok.
+    }
 }

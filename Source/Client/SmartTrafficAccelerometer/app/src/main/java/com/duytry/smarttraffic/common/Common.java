@@ -1,5 +1,8 @@
 package com.duytry.smarttraffic.common;
 
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+
 public final class Common {
     public static final String PREFERENCES = "UserInformationPreferences";
     public static final String NAME_PREFERENCES_KEY = "Name";
@@ -22,6 +25,36 @@ public final class Common {
 
     public static final String ERROR_MESSAGE = "Error!!!";
     public static final String OPEN_FILE_ERROR_MESSAGE = "Unexpected error when open file!";
-    public static final String WRONG_FILE_FORMAT_ERROR_MESSAGE = "The file is not right-format. Please choose another file!";
+
+    public static final String DATE_INPUT_FORMAT = "yyyyMMddhhmmss";
+    public static final String DATE_OUTPUT_FORMAT = "hh:mm:ss dd/MM/yyyy";
+
+    public static final int VIEW_DATA_RESULT_CODE = 2001;
+    public static final int VIEW_DATA_REQUEST_CODE = 2000;
+
+    public static final String md5(final String s) {
+        final String MD5 = "MD5";
+        try {
+            // Create MD5 Hash
+            MessageDigest digest = java.security.MessageDigest
+                    .getInstance(MD5);
+            digest.update(s.getBytes());
+            byte messageDigest[] = digest.digest();
+
+            // Create Hex String
+            StringBuilder hexString = new StringBuilder();
+            for (byte aMessageDigest : messageDigest) {
+                String h = Integer.toHexString(0xFF & aMessageDigest);
+                while (h.length() < 2)
+                    h = "0" + h;
+                hexString.append(h);
+            }
+            return hexString.toString();
+
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        }
+        return "";
+    }
 
 }

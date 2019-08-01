@@ -1,21 +1,21 @@
 package com.duytry.smarttraffic;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.AlertDialog;
+import android.arch.lifecycle.MutableLiveData;
+import android.arch.lifecycle.Observer;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
-import android.graphics.Color;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.location.Location;
-import android.location.LocationListener;
-import android.location.LocationManager;
 import android.net.Uri;
 import android.os.Environment;
 import android.os.Process;
@@ -23,6 +23,7 @@ import android.provider.Settings;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.app.FragmentManager;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.text.TextUtils;
@@ -36,17 +37,20 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.duytry.smarttraffic.common.Common;
+import com.duytry.smarttraffic.common.MySocketFactory;
+import com.duytry.smarttraffic.fragment.MyDialogFragment;
 import com.duytry.smarttraffic.entity.MyLocation;
+import com.duytry.smarttraffic.fragment.ViewDataFragment;
 import com.github.mikephil.charting.charts.LineChart;
-import com.github.mikephil.charting.components.Legend;
-import com.github.mikephil.charting.components.XAxis;
 import com.github.mikephil.charting.components.YAxis;
-import com.github.mikephil.charting.data.Entry;
 import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
-import com.github.mikephil.charting.interfaces.datasets.ILineDataSet;
-import com.github.nkzawa.socketio.client.IO;
 import com.github.nkzawa.socketio.client.Socket;
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationCallback;
+import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationResult;
+import com.google.android.gms.location.LocationServices;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -57,12 +61,12 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.net.URISyntaxException;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.List;
 import java.util.Queue;
 
 
@@ -71,9 +75,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private static final int REQUEST_PERMISSION_REQUEST_CODE = 1000;
     private static final int INITIAL_REQUEST=1337;
     private static final int NUM_OF_ENTRY = 1000;
-    private static final String DATE_FORMAT = "yyyyMMddhhmmss";
     private static final String TAG = "MainActivity";
-    private static final int MESSAGE_REQUEST = 01;
+    private static final int MAP_REQUEST_CODE = 1999;
     private EditText fileNameResult;
     private String fileNameToLoad;
     private String pathFileToLoad;
@@ -81,21 +84,18 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private int mVisibleXRangeMaximum = 600;
     private SensorManager sensorManager;
     private Sensor accelerometer;
+    ViewDataFragment viewDataFragment;
     private LineChart mChartX, mChartY, mChartZ;
-    private boolean isRunning = true;
+    private MutableLiveData<Boolean> isRunning = new MutableLiveData<>();
     private boolean onLoadFile = false;
     private int idLoadFile = 0;
     Intent myFileIntent;
     private static ArrayList<MyLocation> locationData;
     private static ArrayList<String> timeData;
-    private static double longitude;
-    private static double latitude;
-
 
     private static String dataDirectory;
 
-    private Button btnOpen, btnStop, btnResume, btnSave;
-    private Button btnFinish;
+    private Button btnOpen, btnStop, btnResume, btnSave, btnFinish,btnManage;
     private Button btnShockPoint, btnSpeedUp, btnBrakeDown, btnParking;
     private Spinner spinnerSpeed;
     private TextView textViewUserInfo;
@@ -106,20 +106,13 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private SharedPreferences userInformation;
     SimpleDateFormat simpleDateFormat;
 
+    private boolean mLocationPermissionGranted;
+    private FusedLocationProviderClient mFusedLocationProviderClient;
+    private Location mLastKnownLocation;
 
 //    Date startDate;
 
-    //cuongvv add start
-    private Socket mSocket;
-    {
-
-        try {
-            mSocket = IO.socket(BuildConfig.SendDataIp);
-        } catch (URISyntaxException e) {
-            Toast.makeText(this, e.toString(), Toast.LENGTH_SHORT).show();
-        }
-    }
-    //cuongvv add end
+    private Socket mSocket = MySocketFactory.getInstance().getMySocket();
 
     @Override
     protected void onCreate(final Bundle savedInstanceState) {
@@ -137,18 +130,38 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             ActivityCompat.requestPermissions(this, PERMISSIONS, REQUEST_PERMISSION_REQUEST_CODE);
         }
 
+        mLocationPermissionGranted = true;
+        mFusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
+
         //turn on GPS
         turnOnGPS();
-        getCurrentLocation();
+        startLocationUpdates();
 
         //get sensor
         sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
-        accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION);
-        if (accelerometer != null) {
+        List<Sensor> sensors = sensorManager.getSensorList(Sensor.TYPE_LINEAR_ACCELERATION);
+        if (sensors.isEmpty()) {
+            sensors = sensorManager.getSensorList(Sensor.TYPE_ACCELEROMETER);
+            if (sensors.isEmpty()) {
+                AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
+                builder.setTitle(R.string.sensor_error_tittle);
+                builder.setMessage(R.string.sensor_error_message);
+                builder.setCancelable(true);
+                builder.setNegativeButton("OK", null);
+                AlertDialog dialog = builder.create();
+                dialog.show();
+            } else {
+                accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+            }
+        } else {
+            accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION);
+        }
+        if(accelerometer != null){
+            isRunning.postValue(true);
             sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_GAME);
         }
 
-        simpleDateFormat = new SimpleDateFormat(DATE_FORMAT);
+        simpleDateFormat = new SimpleDateFormat(Common.DATE_INPUT_FORMAT);
         userInformation = getSharedPreferences(Common.PREFERENCES,MODE_PRIVATE);
 
         //init layout
@@ -156,10 +169,22 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
         //create folder to save data
         this.dataDirectory = makeDirectory();
-        File file = new File(dataDirectory);
+        checkOldData();
+
+        //init graph
+//        initChart();
+
+        locationData = new ArrayList<>();
+        timeData = new ArrayList<>();
+
+//        startDate = new Date();
+    }
+
+    private void checkOldData(){
+        final File fileDirectory = new File(dataDirectory);
         //check old data
-        if(file != null && file.exists()){
-            final String[] oldDatas = file.list();
+        if(fileDirectory != null && fileDirectory.exists()){
+            final String[] oldDatas = fileDirectory.list();
             if(oldDatas.length >= 1){
                 AlertDialog.Builder builder = new AlertDialog.Builder(this);
                 builder.setTitle(R.string.overwrite_data_warning);
@@ -169,8 +194,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                         for ( String oldFileStr : oldDatas
-                             ) {
-                            File oldFile = new File(oldFileStr);
+                        ) {
+                            File oldFile = new File(fileDirectory.getAbsolutePath() + File.separator + oldFileStr);
                             boolean deleted = oldFile.delete();
                             if(!deleted){
                                 Toast.makeText(MainActivity.this, "Delete file error", Toast.LENGTH_LONG).show();
@@ -190,27 +215,9 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 dlg.show();
             }
         }
-
-        //init graph
-        initChart();
-
-        locationData = new ArrayList<>();
-        timeData = new ArrayList<>();
-
-        //cuongvv start
-        mSocket.connect();
-        //sent file
-
-
-        //mSocket.on("dataResults",onMessage_Results);
-        //cuongvv end
-
-//        startDate = new Date();
     }
-//cuongvv start
-    private void sendFileToServer(String filePath){
 
-//        mSocket.emit("image", road + File.separator + filePath);
+    private void sendFileToServer(String filePath){
 
         mSocket.emit("filename", filePath);
         FileInputStream inputStream = null;
@@ -236,28 +243,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         mSocket.emit("data", data.toString());
 
     }
-//cuongvv end
-/*    //cuongvv start
-    private Emitter.Listener onMessage_Results = new Emitter.Listener() {
-        @Override
-        public void call(final Object... args) {
-            runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    JSONObject data = (JSONObject) args[0];
-                    String table;
-                    try{
-                        table = data.getString("table");
-                        Toast.makeText(getApplicationContext(),table,Toast.LENGTH_SHORT).show();
-                    }catch(JSONException e){
-                        return;
-                    }
-                }
-            });
-        }
-    };
-    //cuongvv end
-*/
+
     /**
      * Init layout
      */
@@ -267,9 +253,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         stopListener = new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Log.d(TAG, "Button Stop clicked");
-                sensorManager.unregisterListener(MainActivity.this);
-                isRunning = false;
+                stopSensor();
             }
         };
         btnStop.setOnClickListener(stopListener);
@@ -279,9 +263,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         resumeListener = new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Log.d(TAG, "Button Resume clicked");
-                sensorManager.registerListener(MainActivity.this, accelerometer, SensorManager.SENSOR_DELAY_GAME);
-                isRunning = true;
+                resumeSensor();
             }
         };
         btnResume.setOnClickListener(resumeListener);
@@ -302,7 +284,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             @Override
             public void onClick(View v) {
                 Log.d(TAG, "Button Open clicked");
-                sensorManager.unregisterListener(MainActivity.this);
+                stopSensor();
                 loadData();
             }
         };
@@ -369,6 +351,31 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         };
         btnFinish.setOnClickListener(finishListener);
 
+        //manage button
+        btnManage = (Button) findViewById(R.id.btn_manage);
+        btnManage.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                goToMapsActivity();
+            }
+        });
+
+        isRunning.observe(this, new Observer<Boolean>() {
+            @Override
+            public void onChanged(@Nullable Boolean isRunning) {
+                if (isRunning == null) {
+                    return;
+                }
+                if (isRunning) {
+                    btnStop.setVisibility(View.VISIBLE);
+                    btnResume.setVisibility(View.GONE);
+                } else {
+                    btnStop.setVisibility(View.GONE);
+                    btnResume.setVisibility(View.VISIBLE);
+                }
+            }
+        });
+
         //user info
         String name = userInformation.getString(Common.NAME_PREFERENCES_KEY, Common.UNDEFINED);
         String road = userInformation.getString(Common.ROAD_PREFERENCES_KEY, Common.UNDEFINED);
@@ -381,119 +388,21 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
         textViewUserInfo = (TextView) findViewById(R.id.textView_user_info);
         textViewUserInfo.setText(userInfo.toString());
+        viewDataFragment = (ViewDataFragment) getSupportFragmentManager().findFragmentById(R.id.view_data_fragment);
+        viewDataFragment.initChart();
+        mChartX = viewDataFragment.getmChartX();
+        mChartY = viewDataFragment.getmChartY();
+        mChartZ = viewDataFragment.getmChartZ();
     }
 
-    /*
-    init chart graph for accelerometer status view
-     */
-    private void initChart(){
-        mChartX = (LineChart) findViewById(R.id.chartX);
-        mChartX.getDescription().setText("Real time accelerometer Data Plot X");
-        mChartX.setTouchEnabled(true);
-        mChartX.setDragEnabled(true);
-        mChartX.setScaleEnabled(true);
-        mChartX.setDrawGridBackground(true);
-        mChartX.setPinchZoom(true);
-        mChartX.setBackgroundColor(Color.WHITE);
+    private void stopSensor(){
+        sensorManager.unregisterListener(MainActivity.this);
+        isRunning.postValue(false);
+    }
 
-        mChartY = (LineChart) findViewById(R.id.chartY);
-        mChartY.getDescription().setText("Real time accelerometer Data Plot Y");
-        mChartY.setTouchEnabled(true);
-
-        mChartY.setDragEnabled(true);
-        mChartY.setScaleEnabled(true);
-        mChartY.setDrawGridBackground(true);
-        mChartY.setPinchZoom(true);
-        mChartY.setBackgroundColor(Color.WHITE);
-
-        mChartZ = (LineChart) findViewById(R.id.chartZ);
-        mChartZ.getDescription().setText("Real time accelerometer Data Plot Z");
-        mChartZ.setTouchEnabled(true);
-        mChartZ.setDragEnabled(true);
-        mChartZ.setScaleEnabled(true);
-        mChartZ.setDrawGridBackground(true);
-        mChartZ.setPinchZoom(true);
-        mChartZ.setBackgroundColor(Color.WHITE);
-
-        LineData dataX = new LineData();
-        dataX.setValueTextColor(Color.RED);
-        mChartX.setData(dataX);
-        LineData dataY = new LineData();
-        dataY.setValueTextColor(Color.GREEN);
-        mChartY.setData(dataY);
-        LineData dataZ = new LineData();
-        dataZ.setValueTextColor(Color.BLUE);
-        mChartZ.setData(dataZ);
-
-        Legend legendX = mChartX.getLegend();
-        legendX.setForm(Legend.LegendForm.LINE);
-        legendX.setTextColor(Color.WHITE);
-
-        Legend legendY = mChartY.getLegend();
-        legendY.setForm(Legend.LegendForm.LINE);
-        legendY.setTextColor(Color.WHITE);
-
-        Legend legendZ = mChartZ.getLegend();
-        legendZ.setForm(Legend.LegendForm.LINE);
-        legendZ.setTextColor(Color.WHITE);
-
-        XAxis xl = mChartX.getXAxis();
-        xl.setTextColor(Color.WHITE);
-        xl.setDrawAxisLine(true);
-        xl.setAvoidFirstLastClipping(true);
-        xl.setEnabled(true);
-
-        xl = mChartY.getXAxis();
-        xl.setTextColor(Color.WHITE);
-        xl.setDrawAxisLine(true);
-        xl.setAvoidFirstLastClipping(true);
-        xl.setEnabled(true);
-
-        xl = mChartZ.getXAxis();
-        xl.setTextColor(Color.WHITE);
-        xl.setDrawAxisLine(true);
-        xl.setAvoidFirstLastClipping(true);
-        xl.setEnabled(true);
-
-        YAxis leftAxis = mChartX.getAxisLeft();
-        leftAxis.setTextColor(Color.WHITE);
-        leftAxis.setDrawGridLines(false);
-        leftAxis.setAxisMaximum(10f);
-        leftAxis.setAxisMinimum(0f);
-        leftAxis.setDrawGridLines(true);
-
-        leftAxis = mChartY.getAxisLeft();
-        leftAxis.setTextColor(Color.WHITE);
-        leftAxis.setDrawGridLines(false);
-        leftAxis.setAxisMaximum(10f);
-        leftAxis.setAxisMinimum(0f);
-        leftAxis.setDrawGridLines(true);
-
-        leftAxis = mChartZ.getAxisLeft();
-        leftAxis.setTextColor(Color.WHITE);
-        leftAxis.setDrawGridLines(false);
-        leftAxis.setAxisMaximum(10f);
-        leftAxis.setAxisMinimum(0f);
-        leftAxis.setDrawGridLines(true);
-
-        YAxis rightAxis = mChartX.getAxisRight();
-        rightAxis.setEnabled(false);
-
-        rightAxis = mChartY.getAxisRight();
-        rightAxis.setEnabled(false);
-
-        rightAxis = mChartZ.getAxisRight();
-        rightAxis.setEnabled(false);
-
-        mChartX.getAxisLeft().setDrawGridLines(false);
-        mChartX.getXAxis().setDrawGridLines(false);
-        mChartX.setDrawBorders(false);
-        mChartY.getAxisLeft().setDrawGridLines(false);
-        mChartY.getXAxis().setDrawGridLines(false);
-        mChartY.setDrawBorders(false);
-        mChartZ.getAxisLeft().setDrawGridLines(false);
-        mChartZ.getXAxis().setDrawGridLines(false);
-        mChartZ.setDrawBorders(false);
+    private void resumeSensor(){
+        sensorManager.registerListener(MainActivity.this, accelerometer, SensorManager.SENSOR_DELAY_GAME);
+        isRunning.postValue(true);
     }
 
     private void loadData() {
@@ -501,82 +410,30 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         intent.setType("text/*");
         intent.addCategory(Intent.CATEGORY_OPENABLE);
         startActivityForResult(intent, CHOOSE_FILE_MESS_CODE);
-        sensorManager.unregisterListener(MainActivity.this);
-
-    }
-
-    /**
-     * add data to graph viewer
-     * @param event
-     * @param axe
-     */
-    private void addEndtry(SensorEvent event, int axe) {
-        LineChart mchart = null;
-        switch (axe){
-            case 0: mchart = mChartX;
-                break;
-            case 1: mchart = mChartY;
-                break;
-            case 2: mchart = mChartZ;
-                break;
-            default: break;
-        }
-
-        LineData data = mchart.getData();
-        if (data != null) {
-            ILineDataSet set = data.getDataSetByIndex(0);
-            if (set == null) {
-                switch (axe){
-                    case 0: set = createSet(Color.RED);
-                        break;
-                    case 1: set = createSet(Color.BLUE);
-                        break;
-                    case 2: set = createSet(Color.GREEN);
-                        break;
-                    default: break;
-                }
-                data.addDataSet(set);
-            }
-
-            Entry entry = new Entry(set.getEntryCount(), event.values[axe] + 5);
-            data.addEntry(entry, 0);
-            LineData tmpData = mchart.getData();
-
-            data.notifyDataChanged();
-            String description = "";
-            switch (axe){
-                case 0: description = "x: ";
-                    break;
-                case 1: description = "y: ";
-                    break;
-                case 2: description = "z: ";
-                    break;
-                default: break;
-            }
-            mchart.getDescription().setText(description + event.values[axe]);
-            mchart.notifyDataSetChanged();
-            mchart.setVisibleXRangeMaximum(mVisibleXRangeMaximum);
-            mchart.moveViewToX(data.getEntryCount());
-        }
     }
 
     private void addEndtryX(SensorEvent event) {
-        addEndtry(event, 0);
+        viewDataFragment.addEndtry(event, 0);
     }
 
     private void addEndtryY(SensorEvent event) {
-        addEndtry(event, 1);
+        viewDataFragment.addEndtry(event, 1);
     }
 
     private void addEndtryZ(SensorEvent event) {
-        addEndtry(event, 2);
+        viewDataFragment.addEndtry(event, 2);
     }
 
     private void addLocation(){
         if (locationData == null) {
             locationData = new ArrayList<>();
         }
-        locationData.add(new MyLocation(latitude, longitude));
+        if(mLastKnownLocation == null){
+            locationData.add(new MyLocation(0, 0));
+        } else {
+            locationData.add(new MyLocation(mLastKnownLocation.getLatitude(), mLastKnownLocation.getLongitude()));
+        }
+
     }
 
     private void addTime(){
@@ -601,6 +458,9 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     }
 
     private void pushDataToServer() {
+        if(!mSocket.connected()){
+            mSocket.connect();
+        }
         String road = userInformation.getString(Common.ROAD_PREFERENCES_KEY, Common.UNDEFINED);
         mSocket.emit("road", road);
         File folder = new File(dataDirectory);
@@ -608,6 +468,12 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         for ( String file : files ) {
             sendFileToServer(file);
         }
+        mSocket.emit("end_send_file", "true");
+        FragmentManager fragmentManager = getSupportFragmentManager();
+        MyDialogFragment dialogFragment = new MyDialogFragment();
+        dialogFragment.setTittle(getString(R.string.push_data_success_tittle));
+        dialogFragment.setMessage(getString(R.string.push_data_success_message));
+        dialogFragment.show(fragmentManager, "Save data success");
 
     }
 
@@ -710,7 +576,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
             //first row print number of point
             bw.write(String.valueOf(minCount));
-            bw.newLine();
 
             String saveMode = "1";
 
@@ -727,6 +592,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
                 String strTime = timeData.get(i);
 
+                bw.newLine();
                 bw.write(saveMode);
                 bw.write(Common.SPACE_CHARACTER);
 
@@ -749,7 +615,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 bw.write(Common.SPACE_CHARACTER);
 
                 bw.write(Common.SEMICOLON_CHARACTER);
-                bw.newLine();
             }
 
             Log.d(TAG, "Saved data to filename: " + fileName);
@@ -774,92 +639,48 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         switch (requestCode) {
             case CHOOSE_FILE_MESS_CODE:
                 if (resultCode == RESULT_OK) {
-                    openFile(intentData);
+                    if (intentData != null) {
+                        Uri uri = intentData.getData();
+                        openFile(uri);
+                    }
                 }
+                break;
+            case MAP_REQUEST_CODE:
+                if(resultCode == Common.VIEW_DATA_RESULT_CODE){
+                    String data = intentData.getStringExtra("data");
+                    stopSensor();
+                    viewDataFragment.viewDataFromString(data);
+                }
+                break;
+            case Common.VIEW_DATA_REQUEST_CODE:
+                stopSensor();
                 break;
         }
     }
 
-    private void openFile(@Nullable Intent intentData){
-        sensorManager.unregisterListener(MainActivity.this);
-         isRunning = false;
-         if (intentData != null) {
-             Uri uri = intentData.getData();
-             ContentResolver res = this.getContentResolver();
-             try {
-                 InputStream inputStream = res.openInputStream(uri);
-                 if(inputStream != null){
-                     try (BufferedReader br = new BufferedReader(new InputStreamReader(inputStream))) {
-                         String strCurrentLine = br.readLine();
-                         int pointNumber = Integer.parseInt(strCurrentLine);
-                         int i = 0;
-
-                         mChartX.clearValues();
-                         LineData dataX = mChartX.getData();
-                         ILineDataSet setX = null;
-                         if (dataX != null) {
-                             setX = dataX.getDataSetByIndex(0);
-                             if (setX == null) {
-                                 setX = createSet(Color.RED);
-                                 dataX.addDataSet(setX);
-                             }
-                         }
-                         mChartY.clearValues();
-                         LineData dataY = mChartY.getData();
-                         ILineDataSet setY = null;
-                         if (dataY != null) {
-                             setY = dataY.getDataSetByIndex(0);
-                             if (setY == null) {
-                                 setY = createSet(Color.BLUE);
-                                 dataY.addDataSet(setY);
-                             }
-                         }
-                         mChartZ.clearValues();
-                         LineData dataZ = mChartZ.getData();
-                         ILineDataSet setZ = null;
-                         if (dataZ != null) {
-                             setZ = dataZ.getDataSetByIndex(0);
-                             if (setZ == null) {
-                                 setZ = createSet(Color.GREEN);
-                                 dataZ.addDataSet(setZ);
-                             }
-                         }
-
-                         while ((strCurrentLine = br.readLine()) != null) {
-                             String[] arrValues = strCurrentLine.split(Common.SPACE_CHARACTER);
-                             if(arrValues.length != 8){
-                                 Toast.makeText(this, Common.WRONG_FILE_FORMAT_ERROR_MESSAGE, Toast.LENGTH_LONG).show();
-                                 return;
-                             }
-                             dataX.addEntry(new Entry(setX.getEntryCount(), Float.parseFloat(arrValues[1])+5), 0);
-                             dataY.addEntry(new Entry(setY.getEntryCount(), Float.parseFloat(arrValues[2])+5), 0);
-                             dataZ.addEntry(new Entry(setZ.getEntryCount(), Float.parseFloat(arrValues[3])+5), 0);
-                             i++;
-                         }
-                         dataX.notifyDataChanged();
-                         mChartX.notifyDataSetChanged();
-                         mChartX.setVisibleXRangeMaximum(mVisibleXRangeMaximum);
-                         mChartX.moveViewToX(dataX.getEntryCount());
-                         dataY.notifyDataChanged();
-                         mChartY.notifyDataSetChanged();
-                         mChartY.setVisibleXRangeMaximum(mVisibleXRangeMaximum);
-                         mChartY.moveViewToX(dataY.getEntryCount());
-                         dataZ.notifyDataChanged();
-                         mChartZ.notifyDataSetChanged();
-                         mChartZ.setVisibleXRangeMaximum(mVisibleXRangeMaximum);
-                         mChartZ.moveViewToX(dataZ.getEntryCount());
-                     } catch (IOException e) {
-                         e.printStackTrace();
-                     }
-                 }
-             } catch (FileNotFoundException | NullPointerException e) {
-                 Toast.makeText(this, Common.ERROR_MESSAGE, Toast.LENGTH_LONG).show();
-                 e.printStackTrace();
-             } catch (NumberFormatException e){
-                 Toast.makeText(this, Common.WRONG_FILE_FORMAT_ERROR_MESSAGE, Toast.LENGTH_LONG).show();
-                 e.printStackTrace();
-             }
-         }
+    private void openFile(Uri uri){
+        ContentResolver res = this.getContentResolver();
+        try {
+            InputStream inputStream = res.openInputStream(uri);
+            if(inputStream != null){
+                try (BufferedReader br = new BufferedReader(new InputStreamReader(inputStream))) {
+                    StringBuilder dataStr = new StringBuilder();
+                    String strCurrentLine = "";
+                    while ((strCurrentLine = br.readLine()) != null) {
+                        dataStr.append(strCurrentLine);
+                        dataStr.append(System.lineSeparator());
+                    }
+                    Intent intent = new Intent(this, ViewDataActivity.class);
+                    intent.putExtra("data", dataStr.toString());
+                    startActivityForResult(intent, Common.VIEW_DATA_REQUEST_CODE);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        } catch (FileNotFoundException | NullPointerException e) {
+            Toast.makeText(this, Common.ERROR_MESSAGE, Toast.LENGTH_LONG).show();
+            e.printStackTrace();
+        }
     }
 
 
@@ -870,7 +691,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     @Override
     public final void onSensorChanged (SensorEvent sensorEvent){
-        if(isRunning){
+        if(isRunning.getValue() != null && isRunning.getValue().booleanValue() == true){
             addEndtryX(sensorEvent);
             addEndtryY(sensorEvent);
             addEndtryZ(sensorEvent);
@@ -882,22 +703,19 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     @Override
     protected void onPause () {
         super.onPause();
-        sensorManager.unregisterListener(this);
     }
 
 
     @Override
     protected void onDestroy () {
-        sensorManager.unregisterListener(MainActivity.this);
+        stopSensor();
         super.onDestroy();
 
-        mSocket.disconnect();
     }
 
     @Override
     protected void onResume () {
         super.onResume();
-        sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_GAME);
     }
 
     @Override
@@ -968,42 +786,41 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             alertDialog.show();
         }
     }
-    private void getCurrentLocation() {
 
-        LocationManager locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
-        LocationListener locationListener = new LocationListener() {
-            @Override
-            public void onLocationChanged(Location location) {
-                MainActivity.latitude = location.getLatitude();
-                MainActivity.longitude = location.getLongitude();
-                Toast.makeText(MainActivity.this, "kinh độ: " + MainActivity.latitude
-                        + "- vĩ độ: " + MainActivity.longitude, Toast.LENGTH_LONG).show();
+    protected LocationRequest createLocationRequest() {
+        LocationRequest locationRequest = LocationRequest.create();
+        locationRequest.setInterval(1000);
+        locationRequest.setFastestInterval(500);
+        locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+        return locationRequest;
+    }
+
+    @SuppressLint("MissingPermission")
+    private void startLocationUpdates() {
+        mFusedLocationProviderClient.requestLocationUpdates(createLocationRequest(),
+                locationCallback,
+                null /* Looper */);
+    }
+
+    private LocationCallback locationCallback = new LocationCallback() {
+        @Override
+        public void onLocationResult(LocationResult locationResult) {
+            if (locationResult == null) {
+                return;
             }
-
-            @Override
-            public void onStatusChanged(String provider, int status, Bundle extras) {
-
-            }
-
-            @Override
-            public void onProviderEnabled(String provider) {
-
-            }
-
-            @Override
-            public void onProviderDisabled(String provider) {
-
+            for (Location location : locationResult.getLocations()) {
+                mLastKnownLocation = location;
             }
         };
-        if ((ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
-                != PackageManager.PERMISSION_GRANTED)
-                && (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
-                != PackageManager.PERMISSION_GRANTED)
-        ) {
-            return;
-        }
-        locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER,
-                1000, 10,
-                locationListener);
+    };
+
+    private void stopLocationUpdates() {
+        mFusedLocationProviderClient.removeLocationUpdates(locationCallback);
     }
+
+    private void goToMapsActivity(){
+        Intent intent = new Intent(getApplicationContext(), MapsActivity.class);
+        startActivityForResult(intent, MAP_REQUEST_CODE);
+    }
+
 }

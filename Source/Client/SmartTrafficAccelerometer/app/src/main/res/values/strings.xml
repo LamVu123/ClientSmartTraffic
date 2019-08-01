@@ -10,6 +10,20 @@
     <string name="btn_parking">Parking</string>
     <string name="textView_speed_label">Speed</string>
     <string name="btn_finish">Finish</string>
+    <string name="btn_manage">Manage Map</string>
+    <string name="btn_back_to_main">Go Back</string>
+    <string name="btn_change_road">Change Road</string>
+    <string name="btn_tool">Tools</string>
+    <string name="btn_delete_shock_point">Delete</string>
+    <string name="btn_view_data">View Data</string>
+    <string name="textView_shock_point_tittle">Shock Point</string>
+    <string name="textView_road_info_tittle">Road Info</string>
+    <string name="btn_delete_road">Delete</string>
+    <string name="btn_edit_road">Edit</string>
+    <string name="textView_road_name">Name</string>
+    <string name="textView_road_name_hint">Road Name</string>
+    <string name="btn_save_road">Save</string>
+    <string name="btn_back_from_view_data">Back</string>
     <string-array name="speeds_array">
         <item>50km/h</item>
         <item>60km/h</item>
@@ -27,11 +41,26 @@
     <string name="action_sign_in_short">Sign in</string>
     <string name="welcome">"Welcome !"</string>
     <string name="invalid_username">Not a valid username</string>
-    <string name="invalid_password">Password must be >5 characters</string>
-    <string name="login_failed">"Login failed"</string>
+    <string name="login_failed_tittle_dialog">Opps</string>
+    <string name="login_failed">Login failed</string>
+    <string name="login_error">Problem when connecting to server, please try again later</string>
+    <string name="login_failed_message">Please check your username and password.</string>
     <string name="overwrite_data_warning">Warning</string>
     <string name="overwrite_data_warning_message">This road contains old data. Do you want to delete?</string>
     <string name="ok_button">OK</string>
     <string name="keep_button">Keep it</string>
+    <string name="invalid_password">Password must be >5 characters</string>
+    <string name="sensor_error_tittle">Error</string>
+    <string name="sensor_error_message">Problem with sensors in this device</string>
+    <string name="title_activity_maps">Map</string>
+    <string name="title_show_road">Pick a road</string>
+    <string name="title_road_empty">Opps</string>
+    <string name="message_road_empty">Problem when getting roads from server, please try again</string>
+    <string name="message_point_empty">This road contain no data</string>
+    <string name="wrong_file_dialog_message">The file is not right-format. Please choose another file!</string>
+    <string name="wrong_file_dialog_tittle">Opps</string>
+    <string name="push_data_success_tittle">Success</string>
+    <string name="push_data_success_message">Successfully save data to server</string>
+
 
 </resources>

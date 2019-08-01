@@ -28,6 +28,7 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -82,6 +83,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private ListView listView;
     private EditText etOrigin;
     private EditText etDestination;
+    private LinearLayout layoutMain;
     private List<Marker> originMarkers = new ArrayList<>();
     private List<Marker> destinationMarkers = new ArrayList<>();
     private List<Polyline> polylinePaths = new ArrayList<>();
@@ -109,12 +111,15 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_maps);
 
-        mFusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
-
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
+        mFusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
+
+        layoutMain = (LinearLayout) findViewById(R.id.layoutMain);
+        //layoutMain.setAlpha((float) 0.5);
+
         turnOnGPS();
         if (Build.VERSION.SDK_INT >= 23) {
             setPermission();
@@ -150,7 +155,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 try {
                     Animation animation = new AlphaAnimation(1.1f, 0.3f);
                     animation.setDuration(150);
-                    btnFindPath.startAnimation(animation);
+                    btnSetting.startAnimation(animation);
                     Intent intent = new Intent(getApplicationContext(), SettingsActivity.class);
                     intent.putExtra("maptype", mMap.getMapType());
                     startActivityForResult(intent, 1);
@@ -445,7 +450,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 onAddressFinderStart(mlatlng);
                 markerPin = mMap.addMarker(new MarkerOptions()
                         .position(latLng));
-                markerPin.setIcon(BitmapDescriptorFactory.fromResource(R.drawable.ic_markerpin));
+//                markerPin.setIcon(BitmapDescriptorFactory.fromResource(R.drawable.ic_markerpin));
             }
         });
 

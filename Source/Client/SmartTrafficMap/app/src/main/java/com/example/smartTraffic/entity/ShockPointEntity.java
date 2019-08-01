@@ -1,18 +1,18 @@
 package com.example.smartTraffic.entity;
 
-public class ShockingPointEntity {
+public class ShockPointEntity {
     private int id;
     private double latitude;
     private double longitude;
     private RoadEntity roadEntity;
 
-    public ShockingPointEntity(int id, double latitude, double longitude) {
+    public ShockPointEntity(int id, double latitude, double longitude) {
         this.id = id;
         this.latitude = latitude;
         this.longitude = longitude;
     }
 
-    public ShockingPointEntity(int id, double latitude, double longitude, RoadEntity roadEntity) {
+    public ShockPointEntity(int id, double latitude, double longitude, RoadEntity roadEntity) {
         this.id = id;
         this.latitude = latitude;
         this.longitude = longitude;
@@ -53,7 +53,7 @@ public class ShockingPointEntity {
 
     @Override
     public String toString() {
-        return "ShockingPointEntity{" +
+        return "ShockPointEntity{" +
                 "id=" + id +
                 ", latitude=" + latitude +
                 ", longitude=" + longitude +

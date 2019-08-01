@@ -33,11 +33,8 @@ import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.example.smartTraffic.entity.RoadEntity;
-import com.example.smartTraffic.entity.ShockingPointEntity;
-import com.github.nkzawa.emitter.Emitter;
-import com.github.nkzawa.socketio.client.IO;
-import com.github.nkzawa.socketio.client.Socket;
+import com.example.smartTraffic.entity.ShockPointEntity;
+import com.example.smartTraffic.module.ShockPointGetterListener;
 import com.google.android.gms.maps.CameraUpdate;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
@@ -53,15 +50,9 @@ import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.android.gms.location.*;
 
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-
 import java.io.UnsupportedEncodingException;
-import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -72,7 +63,7 @@ import RoadModule.SnapPointFinder;
 import RoadModule.SnapPointFinderListener;
 
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback,
-        DirectionFinderListener, PlacesFinderListener, AddressFinderListener, SnapPointFinderListener {
+        DirectionFinderListener, PlacesFinderListener, AddressFinderListener, SnapPointFinderListener, ShockPointGetterListener {
 
     private GoogleMap mMap;
     private static final int REQUEST_CODE = 0;
@@ -102,8 +93,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private static boolean isWarnningOn = false;
     private static boolean isMessageDisplayed = false;
 
-    private static ArrayList<ShockingPointEntity> shockingPointAheads;
-    private static ArrayList<ShockingPointEntity> incomingShockingPoints;
+    private static ArrayList<ShockPointEntity> shockPointAheads;
+    private static ArrayList<ShockPointEntity> incomingShockPoints;
 
 
     @Override
@@ -227,8 +218,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
             }
         });
-        shockingPointAheads = new ArrayList<>();
-        incomingShockingPoints = new ArrayList<>();
+        shockPointAheads = new ArrayList<>();
+        incomingShockPoints = new ArrayList<>();
         List<LatLng> listInputPoints = new ArrayList<>();
         listInputPoints.add(new LatLng(21.003226, 105.663500));
         listInputPoints.add(new LatLng(21.002905, 105.663350));
@@ -489,8 +480,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         // Get the current location of the device and set the position of the map.
         getDeviceLocation();
         startLocationUpdates();
-        mSocket.connect();
-        getShockPoints();
         //dunglh 25/07 end
     }
 
@@ -547,80 +536,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }
     }
 
-    private void getShockPoints() {
-//        mSocket.emit("road", "test");
-//        mSocket.on("points", onMessage_Results);
-        testMarker();
-        isWarnningOn = true;
-    }
-
-    private Socket mSocket;
-
-    {
-        try {
-            mSocket = IO.socket(BuildConfig.GetDataIp);
-        } catch (URISyntaxException e) {
-            Toast.makeText(this, e.toString(), Toast.LENGTH_SHORT).show();
-        }
-    }
-
-    private Emitter.Listener onMessage_Results = new Emitter.Listener() {
-        @Override
-        public void call(final Object... args) {
-            runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-
-                    JSONObject data = (JSONObject) args[0];
-
-                    try {
-                        JSONObject road = data.getJSONObject("road");
-                        int id = road.getInt("id");
-                        String name = road.getString("name");
-                        RoadEntity roadEntity = new RoadEntity(id, name);
-                        JSONArray points = (JSONArray) data.getJSONArray("points");
-                        for (int i = 0; i < points.length(); i++) {
-                            JSONObject point = (JSONObject) points.get(i);
-                            int pointId = point.getInt("id");
-                            double pointLat = point.getDouble("latitude");
-                            double pointLng = point.getDouble("longitude");
-                            ShockingPointEntity shockingPoint = new ShockingPointEntity(pointId, pointLat, pointLng, roadEntity);
-                            shockingPointMarker(shockingPoint);
-                        }
-
-                    } catch (JSONException e) {
-                        return;
-                    }
-                }
-            });
-        }
-    };
-
-    private void testMarker() {
-        ArrayList<ShockingPointEntity> shockingPoints = createSomeDummyPoints();
-        for (ShockingPointEntity shockingPoint : shockingPoints) {
-            shockingPointMarker(shockingPoint);
-        }
-        //TODO arrange points from distance
-        shockingPointAheads = shockingPoints;
-    }
-
-    private ArrayList<ShockingPointEntity> createSomeDummyPoints() {
-        ShockingPointEntity shockingPoint1 = new ShockingPointEntity(1, 21.016189, 105.554189);
-        ShockingPointEntity shockingPoint2 = new ShockingPointEntity(2, 21.0129657, 105.5278376);
-        ShockingPointEntity shockingPoint3 = new ShockingPointEntity(3, 21.010091, 105.523932);
-        ShockingPointEntity shockingPoint4 = new ShockingPointEntity(4, 21.022830, 105.544446);
-
-        ArrayList<ShockingPointEntity> shockingPoints = new ArrayList<>();
-        shockingPoints.add(shockingPoint1);
-        shockingPoints.add(shockingPoint2);
-        shockingPoints.add(shockingPoint3);
-        shockingPoints.add(shockingPoint4);
-        return shockingPoints;
-    }
-
-
-    private void shockingPointMarker(ShockingPointEntity shockingPoint) {
+    private void shockingPointMarker(ShockPointEntity shockingPoint) {
         LatLng pointLatLng = new LatLng(shockingPoint.getLatitude(), shockingPoint.getLongitude());
         Marker pointMarker = mMap.addMarker(new MarkerOptions()
                 .position(pointLatLng)
@@ -654,29 +570,29 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             }
             for (Location location : locationResult.getLocations()) {
                mLastKnownLocation = location;
-               if(isWarnningOn && !shockingPointAheads.isEmpty()){
-                   ShockingPointEntity nearestPoint = shockingPointAheads.get(0);
+               if(isWarnningOn && !shockPointAheads.isEmpty()){
+                   ShockPointEntity nearestPoint = shockPointAheads.get(0);
                    Location nearestPointLocation = new Location("incoming shocking point");
                    nearestPointLocation.setLatitude(nearestPoint.getLatitude());
                    nearestPointLocation.setLongitude(nearestPoint.getLongitude());
                    float distanceInMeters =  nearestPointLocation.distanceTo(location);
                    if(distanceInMeters <= WARNING_DISTANCE){
                        //TODO improve remove last shocking point feature
-                       if(!incomingShockingPoints.isEmpty()){
-                           ShockingPointEntity incomingPoint = incomingShockingPoints.get(0);
+                       if(!incomingShockPoints.isEmpty()){
+                           ShockPointEntity incomingPoint = incomingShockPoints.get(0);
                            Location incomingPointLocation = new Location("incoming shocking point");
                            incomingPointLocation.setLatitude(incomingPoint.getLatitude());
                            incomingPointLocation.setLongitude(incomingPoint.getLongitude());
                            float distance =  nearestPointLocation.distanceTo(location);
                            if(distance <= 100){
-                               incomingShockingPoints.remove(0);
+                               incomingShockPoints.remove(0);
                            }
                        }
                        //TODO end
 
                        //start warning
-                       incomingShockingPoints.add(shockingPointAheads.get(0));
-                       shockingPointAheads.remove(0);
+                       incomingShockPoints.add(shockPointAheads.get(0));
+                       shockPointAheads.remove(0);
                        showAlertDialogAutoClose("Warning", "Ahead " + WARNING_DISTANCE + "m is a shocking point", 5000);
                    }
                }
@@ -731,7 +647,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     @Override
     protected void onPause() {
         super.onPause();
-        stopLocationUpdates();
+//        stopLocationUpdates();
     }
 //dunglh 25/07/2019 end
 
@@ -779,4 +695,15 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     public void onSnapPointFinderSuccess(List<LatLng> listOutputPoints) {
         //đã test ok.
     }
+
+    @Override
+    public void onShockPointGetterStart() {
+
+    }
+
+    @Override
+    public void onShockPointGetterSuccess(ArrayList<ShockPointEntity> shockPointList) {
+
+    }
+
 }

@@ -35,7 +35,7 @@ import android.widget.Toast;
 
 import com.example.smartTraffic.entity.ShockPointEntity;
 import com.example.smartTraffic.modules.DistanceDirectionModule.DistanceFinderListener;
-import com.example.smartTraffic.modules.DistanceDirectionModule.DistancecFinder;
+import com.example.smartTraffic.modules.DistanceDirectionModule.DistanceFinder;
 import com.example.smartTraffic.modules.ShockPointModule.ShockPointGetterListener;
 import com.google.android.gms.maps.CameraUpdate;
 import com.google.android.gms.maps.CameraUpdateFactory;
@@ -715,7 +715,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     @Override
     public void onDistanceFinderStart(LatLng currentLocation, LatLng shockPointLocation) {
         try {
-            new DistancecFinder(this,currentLocation,shockPointLocation).execute();
+            new DistanceFinder(this,currentLocation,shockPointLocation).execute();
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
         }

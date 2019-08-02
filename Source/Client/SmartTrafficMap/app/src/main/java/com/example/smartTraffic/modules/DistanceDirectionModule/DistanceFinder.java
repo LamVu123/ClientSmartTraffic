@@ -16,14 +16,14 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLEncoder;
 
-public class DistancecFinder {
+public class DistanceFinder {
     private static final String DIRECTION_URL_API = "https://maps.googleapis.com/maps/api/directions/json?";
     private static final String GOOGLE_API_KEY = "AIzaSyAknAPT_Qiyp5u9xtCuKzuGL9auMxsYWuU";
     private DistanceFinderListener listener;
     private LatLng currentLocation;
     private LatLng shockPointLocation;
 
-    public DistancecFinder(DistanceFinderListener listener, LatLng currentLocation, LatLng shockPointLocation) {
+    public DistanceFinder(DistanceFinderListener listener, LatLng currentLocation, LatLng shockPointLocation) {
         this.listener = listener;
         this.currentLocation = currentLocation;
         this.shockPointLocation = shockPointLocation;

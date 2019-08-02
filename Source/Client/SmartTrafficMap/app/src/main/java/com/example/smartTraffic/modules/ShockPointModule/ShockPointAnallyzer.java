@@ -1,11 +1,14 @@
 package com.example.smartTraffic.modules.ShockPointModule;
 
 import com.example.smartTraffic.entity.ShockPointEntity;
+import com.example.smartTraffic.modules.DistanceDirectionModule.DistanceFinderListener;
+import com.example.smartTraffic.modules.DistanceDirectionModule.DistanceFinder;
 import com.google.android.gms.maps.model.LatLng;
 
+import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 
-public class ShockPointAnallyzer {
+public class ShockPointAnallyzer implements DistanceFinderListener {
 
     ShockPointAnallyzerListener listener;
     ArrayList<ShockPointEntity> shockPoints;
@@ -31,4 +34,17 @@ public class ShockPointAnallyzer {
     }
 
 
+    @Override
+    public void onDistanceFinderStart(LatLng currentLocation, LatLng shockPointLocation) {
+        try {
+            new DistanceFinder(this,currentLocation,shockPointLocation).execute();
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void onDistanceFinderSuccess(int distance) {
+
+    }
 }

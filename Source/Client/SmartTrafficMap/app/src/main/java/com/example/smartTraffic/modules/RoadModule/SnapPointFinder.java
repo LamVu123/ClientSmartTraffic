@@ -1,4 +1,4 @@
-package RoadModule;
+package com.example.smartTraffic.modules.RoadModule;
 
 import android.os.AsyncTask;
 
@@ -15,11 +15,8 @@ import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.List;
-
-import AddressModule.AddressFinder;
 
 public class SnapPointFinder {
     private static final String GOOGLE_API_KEY = "AIzaSyBn63e-gCePem-dRTD3vABf4PL2KKDlYoY";

@@ -1,4 +1,4 @@
-package AddressModule;
+package com.example.smartTraffic.modules.AddressModule;
 
 public interface AddressFinderListener {
     void onAddressFinderStart(String latlng);

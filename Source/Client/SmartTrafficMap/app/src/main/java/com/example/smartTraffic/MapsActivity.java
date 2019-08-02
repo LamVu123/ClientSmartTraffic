@@ -34,7 +34,9 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.example.smartTraffic.entity.ShockPointEntity;
-import com.example.smartTraffic.module.ShockPointGetterListener;
+import com.example.smartTraffic.modules.DistanceDirectionModule.DistanceFinderListener;
+import com.example.smartTraffic.modules.DistanceDirectionModule.DistancecFinder;
+import com.example.smartTraffic.modules.ShockPointModule.ShockPointGetterListener;
 import com.google.android.gms.maps.CameraUpdate;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
@@ -56,14 +58,15 @@ import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
 
-import DirectionModule.*;
-import PlacesAutoCompleteModule.*;
-import AddressModule.*;
-import RoadModule.SnapPointFinder;
-import RoadModule.SnapPointFinderListener;
+import com.example.smartTraffic.modules.DirectionModule.*;
+import com.example.smartTraffic.modules.PlacesAutoCompleteModule.*;
+import com.example.smartTraffic.modules.AddressModule.*;
+import com.example.smartTraffic.modules.RoadModule.SnapPointFinder;
+import com.example.smartTraffic.modules.RoadModule.SnapPointFinderListener;
 
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback,
-        DirectionFinderListener, PlacesFinderListener, AddressFinderListener, SnapPointFinderListener, ShockPointGetterListener {
+        DirectionFinderListener, PlacesFinderListener, AddressFinderListener,
+        SnapPointFinderListener, ShockPointGetterListener, DistanceFinderListener {
 
     private GoogleMap mMap;
     private static final int REQUEST_CODE = 0;
@@ -229,7 +232,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         listInputPoints.add(new LatLng(21.002833, 105.662258));
         listInputPoints.add(new LatLng(21.002750, 105.661569));
         onSnapPointFinderStart(listInputPoints);
-
+        onDistanceFinderStart(new LatLng(21.005507, 105.689427), new LatLng(20.990505, 105.542933));
     }
 
 
@@ -696,6 +699,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         //đã test ok.
     }
 
+//Shock Point Module Start
     @Override
     public void onShockPointGetterStart() {
 
@@ -705,5 +709,21 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     public void onShockPointGetterSuccess(ArrayList<ShockPointEntity> shockPointList) {
 
     }
+//Shock Point Module End
+//Distance module start
 
+    @Override
+    public void onDistanceFinderStart(LatLng currentLocation, LatLng shockPointLocation) {
+        try {
+            new DistancecFinder(this,currentLocation,shockPointLocation).execute();
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void onDistanceFinderSuccess(int distance) {
+
+    }
+//Distance module End
 }

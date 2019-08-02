@@ -1,4 +1,4 @@
-package AddressModule;
+package com.example.smartTraffic.modules.AddressModule;
 
 import android.os.AsyncTask;
 

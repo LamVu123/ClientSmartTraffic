@@ -1,4 +1,4 @@
-package PlacesAutoCompleteModule;
+package com.example.smartTraffic.modules.PlacesAutoCompleteModule;
 
 import android.os.AsyncTask;
 

@@ -1,4 +1,4 @@
-package DirectionModule;
+package com.example.smartTraffic.modules.DirectionModule;
 
 import java.util.List;
 

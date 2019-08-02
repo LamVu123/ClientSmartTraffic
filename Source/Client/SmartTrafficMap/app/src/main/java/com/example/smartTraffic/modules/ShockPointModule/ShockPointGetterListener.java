@@ -1,4 +1,4 @@
-package com.example.smartTraffic.module;
+package com.example.smartTraffic.modules.ShockPointModule;
 
 import com.example.smartTraffic.entity.ShockPointEntity;
 

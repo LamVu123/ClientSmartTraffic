@@ -222,17 +222,39 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         saveButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                editRoad(road, roadName.getText().toString());
-                editButton.setVisibility(View.VISIBLE);
-                saveButton.setVisibility(View.GONE);
-                deleteButton.setEnabled(true);
-                roadName.setEnabled(false);
+                boolean isValid = validateNewName(roadName.getText().toString());
+                if(isValid){
+                    editRoad(road, roadName.getText().toString());
+                    editButton.setVisibility(View.VISIBLE);
+                    saveButton.setVisibility(View.GONE);
+                    deleteButton.setEnabled(true);
+                    roadName.setEnabled(false);
+                } else {
+                    FragmentManager fragmentManager = getSupportFragmentManager();
+                    MyDialogFragment dialogFragment = new MyDialogFragment();
+                    dialogFragment.setTittle(getString(R.string.road_name_not_valid_tittle));
+                    dialogFragment.setMessage(getString(R.string.road_name_not_valid_message));
+                    dialogFragment.show(fragmentManager, "warning road name not valid");
+                }
+
             }
         });
         builder.setView(roadInfoView);
         dialogRoadInfo = builder.create();
         dialogRoadInfo.show();
 
+    }
+
+    private boolean validateNewName(String newName){
+        if(TextUtils.isEmpty(newName)){
+            return false;
+        }
+        for ( RoadEntity road : roadList ) {
+            if(TextUtils.equals(road.getShortName(), newName)){
+                return false;
+            }
+        }
+        return true;
     }
 
     private void deleteRoad(RoadEntity road){

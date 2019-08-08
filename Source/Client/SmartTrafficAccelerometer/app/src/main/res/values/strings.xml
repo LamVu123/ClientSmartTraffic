@@ -61,6 +61,8 @@
     <string name="wrong_file_dialog_tittle">Opps</string>
     <string name="push_data_success_tittle">Success</string>
     <string name="push_data_success_message">Successfully save data to server</string>
+    <string name="road_name_not_valid_tittle">Warning</string>
+    <string name="road_name_not_valid_message">This road exits, please change other name</string>
 
 
 </resources>

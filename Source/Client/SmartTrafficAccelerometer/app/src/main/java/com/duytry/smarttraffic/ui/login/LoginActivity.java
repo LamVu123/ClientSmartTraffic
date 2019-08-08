@@ -186,7 +186,7 @@ public class LoginActivity extends AppCompatActivity {
                 }
                 t.cancel(); // also just top the timer thread, otherwise, you may receive a crash report
             }
-        }, 15000);
+        }, Common.CONNECTION_TIME_OUT);
 
     }
 

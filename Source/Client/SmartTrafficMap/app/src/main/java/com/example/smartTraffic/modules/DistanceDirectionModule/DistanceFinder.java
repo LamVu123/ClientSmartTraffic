@@ -1,6 +1,8 @@
 package com.example.smartTraffic.modules.DistanceDirectionModule;
+import android.location.Location;
 import android.os.AsyncTask;
 
+import com.example.smartTraffic.entity.ShockPointEntity;
 import com.google.android.gms.maps.model.LatLng;
 
 import org.json.JSONArray;
@@ -14,19 +16,20 @@ import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.net.URLEncoder;
 
 public class DistanceFinder {
     private static final String DIRECTION_URL_API = "https://maps.googleapis.com/maps/api/directions/json?";
     private static final String GOOGLE_API_KEY = "AIzaSyAknAPT_Qiyp5u9xtCuKzuGL9auMxsYWuU";
     private DistanceFinderListener listener;
-    private LatLng currentLocation;
-    private LatLng shockPointLocation;
+    private Location currentLocation;
+    private ShockPointEntity shockPoint;
+    private float distanceAsTheCrowFlies;
 
-    public DistanceFinder(DistanceFinderListener listener, LatLng currentLocation, LatLng shockPointLocation) {
+    public DistanceFinder(DistanceFinderListener listener, Location currentLocation, ShockPointEntity shockPoint, float distanceAsTheCrowFlies) {
         this.listener = listener;
         this.currentLocation = currentLocation;
-        this.shockPointLocation = shockPointLocation;
+        this.shockPoint = shockPoint;
+        this.distanceAsTheCrowFlies = distanceAsTheCrowFlies;
     }
 
     public void execute() throws UnsupportedEncodingException {
@@ -36,8 +39,8 @@ public class DistanceFinder {
 
     //create url to direction
     private String createUrlToDirection() throws UnsupportedEncodingException {
-        String urlOrigin = String.valueOf(currentLocation.latitude)+", "+currentLocation.longitude;
-        String urlDestination = String.valueOf(shockPointLocation.latitude)+", "+shockPointLocation.longitude;
+        String urlOrigin = String.valueOf(currentLocation.getLatitude())+", "+currentLocation.getLongitude();
+        String urlDestination = String.valueOf(shockPoint.getLatitude())+", "+ shockPoint.getLongitude();
 
         return DIRECTION_URL_API + "origin=" + urlOrigin + "&destination=" + urlDestination + "&key=" + GOOGLE_API_KEY;
     }
@@ -91,6 +94,6 @@ public class DistanceFinder {
             JSONObject jsonLeg = jsonLegs.getJSONObject(0);
             JSONObject jsonDistance = jsonLeg.getJSONObject("distance");
             distance = jsonDistance.getInt("value");
-        listener.onDistanceFinderSuccess(distance);
+        listener.onDistanceFinderSuccess(distance, shockPoint, distanceAsTheCrowFlies);
     }
 }

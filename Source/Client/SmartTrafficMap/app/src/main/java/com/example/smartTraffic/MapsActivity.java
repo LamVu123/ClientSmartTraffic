@@ -19,6 +19,7 @@ import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentActivity;
 import android.text.Editable;
+import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.util.Log;
 import android.view.View;
@@ -33,10 +34,12 @@ import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.example.smartTraffic.common.MySocketFactory;
 import com.example.smartTraffic.entity.ShockPointEntity;
 import com.example.smartTraffic.modules.DistanceDirectionModule.DistanceFinderListener;
 import com.example.smartTraffic.modules.DistanceDirectionModule.DistanceFinder;
-import com.example.smartTraffic.modules.ShockPointModule.ShockPointGetterListener;
+import com.github.nkzawa.emitter.Emitter;
+import com.github.nkzawa.socketio.client.Socket;
 import com.google.android.gms.maps.CameraUpdate;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
@@ -54,6 +57,7 @@ import com.google.android.gms.location.*;
 
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -64,9 +68,13 @@ import com.example.smartTraffic.modules.AddressModule.*;
 import com.example.smartTraffic.modules.RoadModule.SnapPointFinder;
 import com.example.smartTraffic.modules.RoadModule.SnapPointFinderListener;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback,
         DirectionFinderListener, PlacesFinderListener, AddressFinderListener,
-        SnapPointFinderListener, ShockPointGetterListener, DistanceFinderListener {
+        SnapPointFinderListener, DistanceFinderListener {
 
     private GoogleMap mMap;
     private static final int REQUEST_CODE = 0;
@@ -92,9 +100,12 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private static final int DEFAULT_ZOOM = 16;
     private static final int DIRECTION_ZOOM = 19;
     private final LatLng mDefaultLocation = new LatLng(21.013138, 105.526876);
-    private static final int WARNING_DISTANCE = 400;
+    private static final int CONSIDER_DISTANCE = 800;
+    private static final int WARNING_DISTANCE = 200;
     private static boolean isWarnningOn = false;
+    private static boolean lastCheckShockPointAhead = false;
     private static boolean isMessageDisplayed = false;
+    private static String SHOCK_POINT_MARKER_TITTLE = "Shock point";
 
     private static ArrayList<ShockPointEntity> shockPointAheads;
     private static ArrayList<ShockPointEntity> incomingShockPoints;
@@ -118,7 +129,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         if (Build.VERSION.SDK_INT >= 23) {
             setPermission();
         } else {
-            getDeviceLocation();
+//            getDeviceLocation();
         }
 
         listView = (ListView) findViewById(R.id.listView);
@@ -223,16 +234,16 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         });
         shockPointAheads = new ArrayList<>();
         incomingShockPoints = new ArrayList<>();
-        List<LatLng> listInputPoints = new ArrayList<>();
-        listInputPoints.add(new LatLng(21.003226, 105.663500));
-        listInputPoints.add(new LatLng(21.002905, 105.663350));
-        listInputPoints.add(new LatLng(21.002865, 105.662840));
-        listInputPoints.add(new LatLng(21.003053, 105.661649));
-        listInputPoints.add(new LatLng(21.002858, 105.662652));
-        listInputPoints.add(new LatLng(21.002833, 105.662258));
-        listInputPoints.add(new LatLng(21.002750, 105.661569));
-        onSnapPointFinderStart(listInputPoints);
-        onDistanceFinderStart(new LatLng(21.005507, 105.689427), new LatLng(20.990505, 105.542933));
+//        List<LatLng> listInputPoints = new ArrayList<>();
+//        listInputPoints.add(new LatLng(21.003226, 105.663500));
+//        listInputPoints.add(new LatLng(21.002905, 105.663350));
+//        listInputPoints.add(new LatLng(21.002865, 105.662840));
+//        listInputPoints.add(new LatLng(21.003053, 105.661649));
+//        listInputPoints.add(new LatLng(21.002858, 105.662652));
+//        listInputPoints.add(new LatLng(21.002833, 105.662258));
+//        listInputPoints.add(new LatLng(21.002750, 105.661569));
+//        onSnapPointFinderStart(listInputPoints);
+//        onShockPointGetterStart("DCT08");
     }
 
 
@@ -286,7 +297,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         } else {
             mLocationPermissionGranted = true;
 //            getCurrentLocation();
-            getDeviceLocation();
+//            getDeviceLocation();
         }
     }
 
@@ -296,7 +307,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         mLocationPermissionGranted = true;
         //getCurrentLocation();
-        getDeviceLocation();
+//        getDeviceLocation();
     }
 
     // Check gps, if turn off => request turn on .
@@ -451,27 +462,40 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         mMap.setOnMarkerClickListener(new GoogleMap.OnMarkerClickListener() {
             @Override
             public boolean onMarkerClick(final Marker marker) {
-                AlertDialog.Builder builder = new AlertDialog.Builder(MapsActivity.this);
-                builder.setTitle("Road: "+marker.getTitle());
-                builder.setMessage("Address: "+marker.getSnippet());
-                builder.setPositiveButton("Delete Point", new DialogInterface.OnClickListener() {
+                if(TextUtils.equals(marker.getTitle(), SHOCK_POINT_MARKER_TITTLE)){
 
-                    public void onClick(DialogInterface dialog, int which) {
-                        marker.remove();
-                        dialog.dismiss();
-                    }
-                });
+                } else {
+                    AlertDialog.Builder builder = new AlertDialog.Builder(MapsActivity.this);
+                    builder.setTitle("Road: "+marker.getTitle());
+                    builder.setMessage("Address: "+marker.getSnippet());
+                    builder.setPositiveButton("Delete Point", new DialogInterface.OnClickListener() {
 
-                builder.setNegativeButton("Close", new DialogInterface.OnClickListener() {
+                        public void onClick(DialogInterface dialog, int which) {
+                            marker.remove();
+                            dialog.dismiss();
+                        }
+                    });
 
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        // Do nothing
-                        dialog.dismiss();
-                    }
-                });
-                AlertDialog alert = builder.create();
-                builder.show();
+                    builder.setNegativeButton("Close", new DialogInterface.OnClickListener() {
+
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            // Do nothing
+                            dialog.dismiss();
+                        }
+                    });
+
+                    builder.setNeutralButton("Get shock point", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            String[] roadName = marker.getTitle().split(" - ");
+                            onShockPointGetterStart(roadName[0]);
+                            dialog.dismiss();
+                        }
+                    });
+                    AlertDialog alert = builder.create();
+                    builder.show();
+                }
                 return false;
             }
         });
@@ -543,7 +567,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         LatLng pointLatLng = new LatLng(shockingPoint.getLatitude(), shockingPoint.getLongitude());
         Marker pointMarker = mMap.addMarker(new MarkerOptions()
                 .position(pointLatLng)
-                .title("Shock point")
+                .title(SHOCK_POINT_MARKER_TITTLE)
                 .snippet(shockingPoint.toString())
                 .icon(BitmapDescriptorFactory.fromResource(R.drawable.icon_shocking_point)));
     }
@@ -573,32 +597,39 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             }
             for (Location location : locationResult.getLocations()) {
                mLastKnownLocation = location;
-               if(isWarnningOn && !shockPointAheads.isEmpty()){
-                   ShockPointEntity nearestPoint = shockPointAheads.get(0);
-                   Location nearestPointLocation = new Location("incoming shocking point");
-                   nearestPointLocation.setLatitude(nearestPoint.getLatitude());
-                   nearestPointLocation.setLongitude(nearestPoint.getLongitude());
-                   float distanceInMeters =  nearestPointLocation.distanceTo(location);
-                   if(distanceInMeters <= WARNING_DISTANCE){
-                       //TODO improve remove last shocking point feature
-                       if(!incomingShockPoints.isEmpty()){
-                           ShockPointEntity incomingPoint = incomingShockPoints.get(0);
-                           Location incomingPointLocation = new Location("incoming shocking point");
-                           incomingPointLocation.setLatitude(incomingPoint.getLatitude());
-                           incomingPointLocation.setLongitude(incomingPoint.getLongitude());
-                           float distance =  nearestPointLocation.distanceTo(location);
-                           if(distance <= 100){
-                               incomingShockPoints.remove(0);
-                           }
+               if(isWarnningOn){
+                   if(!shockPointAheads.isEmpty() && !lastCheckShockPointAhead){
+                       ShockPointEntity nearestPoint = shockPointAheads.get(0);
+                       Location nearestPointLocation = new Location("shock point ahead");
+                       nearestPointLocation.setLatitude(nearestPoint.getLatitude());
+                       nearestPointLocation.setLongitude(nearestPoint.getLongitude());
+                       float distanceInMeters =  nearestPointLocation.distanceTo(location);
+                       if(distanceInMeters <= CONSIDER_DISTANCE){
+                           onDistanceFinderStart(mLastKnownLocation, nearestPoint, distanceInMeters);
+                       } else {
+                           lastCheckShockPointAhead = true;
+                           final Timer t = new Timer();
+                           t.schedule(new TimerTask() {
+                               public void run() {
+                                   lastCheckShockPointAhead = false;
+                                   t.cancel(); // also just top the timer thread, otherwise, you may receive a crash report
+                               }
+                           }, (int) ((distanceInMeters - CONSIDER_DISTANCE)/30*1000));
                        }
-                       //TODO end
-
-                       //start warning
-                       incomingShockPoints.add(shockPointAheads.get(0));
-                       shockPointAheads.remove(0);
-                       showAlertDialogAutoClose("Warning", "Ahead " + WARNING_DISTANCE + "m is a shocking point", 5000);
+                   }
+                   if(!incomingShockPoints.isEmpty()){
+                       ShockPointEntity incomingPoint = incomingShockPoints.get(0);
+                       Location incomingPointLocation = new Location("incoming shock point");
+                       incomingPointLocation.setLatitude(incomingPoint.getLatitude());
+                       incomingPointLocation.setLongitude(incomingPoint.getLongitude());
+                       float incomingDistance =  incomingPointLocation.distanceTo(location);
+                       if(incomingDistance <= WARNING_DISTANCE){
+                           showAlertDialogAutoClose("Warning", "Ahead " + WARNING_DISTANCE + "m is a shocking point", 5000);
+                           incomingShockPoints.remove(incomingPoint);
+                       }
                    }
                }
+
             }
         };
     };
@@ -652,6 +683,17 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         super.onPause();
 //        stopLocationUpdates();
     }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if(mSocket.hasListeners(ON_GET_POINTS_EVENT)){
+            mSocket.off(ON_GET_POINTS_EVENT);
+        }
+        if(mSocket.connected()){
+            mSocket.disconnect();
+        }
+    }
 //dunglh 25/07/2019 end
 
     private void stopLocationUpdates() {
@@ -669,8 +711,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     @Override
     public void onAddressFinderSuccess(String currentLongNameRoad, String currentShortNameRoad, String address) {
-
-        markerPin.setTitle(currentLongNameRoad);
+        markerPin.setTitle(currentShortNameRoad + " - " + currentLongNameRoad);
         markerPin.setSnippet(address);
         markerPin.showInfoWindow();
     }
@@ -699,31 +740,103 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         //đã test ok.
     }
 
-//Shock Point Module Start
-    @Override
-    public void onShockPointGetterStart() {
+    //Shock Point Module Start
 
+    private Socket mSocket = MySocketFactory.getInstance().getMySocket();
+    private final String ON_GET_POINTS_EVENT = "onGetPointSuccess";
+
+    private ArrayList<ShockPointEntity> createSomeDummyPoints() {
+        ShockPointEntity shockingPoint1 = new ShockPointEntity(1, 21.016189, 105.554189);
+        ShockPointEntity shockingPoint2 = new ShockPointEntity(2, 21.0129657, 105.5278376);
+        ShockPointEntity shockingPoint3 = new ShockPointEntity(3, 21.010091, 105.523932);
+        ShockPointEntity shockingPoint4 = new ShockPointEntity(4, 21.022830, 105.544446);
+
+        ArrayList<ShockPointEntity> shockingPoints = new ArrayList<>();
+        shockingPoints.add(shockingPoint3);
+        shockingPoints.add(shockingPoint2);
+        shockingPoints.add(shockingPoint4);
+        shockingPoints.add(shockingPoint1);
+        return shockingPoints;
+    }
+
+    private Emitter.Listener onGetShockPointsListener = new Emitter.Listener() {
+        @Override
+        public void call(final Object... args) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    JSONObject data = (JSONObject) args[0];
+                    ArrayList<ShockPointEntity> shockPoints = new ArrayList<>();
+                    try {
+                        JSONArray points = data.getJSONArray("dataResults");
+                        if (points != null && points.length() > 0) {
+                            for (int i = 0; i < points.length(); i++) {
+                                JSONObject point = points.getJSONObject(i);
+                                int pointId = point.getInt("id");
+                                double latitude = point.getDouble("latitude");
+                                double longitude = point.getDouble("longitude");
+                                ShockPointEntity shockPointEntity;
+                                shockPointEntity = new ShockPointEntity(pointId, latitude, longitude);
+                                shockPoints.add(shockPointEntity);
+                            }
+                        }
+                        onShockPointGetterSuccess(shockPoints);
+                    } catch (JSONException e) {
+                        return;
+                    }
+                }
+            });
+        }
+    };
+
+    public void onShockPointGetterStart(String roadName) {
+        if(!mSocket.connected()){
+            mSocket.connect();
+        }
+        mSocket.emit("nameRoad", roadName);
+        mSocket.on(ON_GET_POINTS_EVENT, onGetShockPointsListener);
+    }
+
+    public void onShockPointGetterSuccess(final ArrayList<ShockPointEntity> shockPointList) {
+        if(mLastKnownLocation == null){
+            final Timer t = new Timer();
+            t.schedule(new TimerTask() {
+                public void run() {
+                    onShockPointGetterSuccess(shockPointList);
+                    t.cancel(); // also just top the timer thread, otherwise, you may receive a crash report
+                }
+            }, 2000);
+            return;
+        }
+        //sort based on current location
+        Collections.sort(shockPointList, new ShockPointEntity.SortByDistance(mLastKnownLocation));
+        this.shockPointAheads = shockPointList;
+        mMap.clear();
+        for ( ShockPointEntity shockPoint : shockPointList ) {
+            shockingPointMarker(shockPoint);
+        }
+        isWarnningOn = true;
     }
 
     @Override
-    public void onShockPointGetterSuccess(ArrayList<ShockPointEntity> shockPointList) {
-
-    }
-//Shock Point Module End
-//Distance module start
-
-    @Override
-    public void onDistanceFinderStart(LatLng currentLocation, LatLng shockPointLocation) {
+    public void onDistanceFinderStart(Location currentLocation, ShockPointEntity shockPoint, float distanceAsTheCrowFlies) {
         try {
-            new DistanceFinder(this,currentLocation,shockPointLocation).execute();
+            new DistanceFinder(this,currentLocation,shockPoint, distanceAsTheCrowFlies).execute();
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
         }
     }
 
     @Override
-    public void onDistanceFinderSuccess(int distance) {
-
+    public void onDistanceFinderSuccess(int distance, ShockPointEntity shockPoint, float distanceAsTheCrowFlies) {
+        boolean isThisShockPointAhead = false;
+        if(distance < distanceAsTheCrowFlies * 1.1){
+            isThisShockPointAhead = true;
+        }
+        if(isThisShockPointAhead){
+            incomingShockPoints.add(shockPoint);
+        }
+        shockPointAheads.remove(shockPoint);
     }
-//Distance module End
+//Shock Point Module End
 }

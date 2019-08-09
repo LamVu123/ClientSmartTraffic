@@ -17,10 +17,12 @@ public class InformationActivity extends AppCompatActivity {
     private EditText editTextName;
     private EditText editTextRoad;
     private Button buttonStart;
+    private Button buttonManageMap;
 
     static final String MESSAGE_NAME_CAN_NOT_EMPTY = "Name can not empty";
     static final String MESSAGE_ROAD_CAN_NOT_EMPTY = "Road can not empty";
     private SharedPreferences userInformation;
+    private boolean backButtonPressed = false;
 
 
     @Override
@@ -32,6 +34,7 @@ public class InformationActivity extends AppCompatActivity {
         this.editTextName = (EditText) findViewById(R.id.editText_name);
         this.editTextRoad = (EditText) findViewById(R.id.editText_road);
         this.buttonStart = (Button) findViewById(R.id.btn_start);
+        this.buttonManageMap = (Button) findViewById(R.id.button_manage_2) ;
 
         userInformation = getSharedPreferences(Common.PREFERENCES,MODE_PRIVATE);
         String name = userInformation.getString(Common.NAME_PREFERENCES_KEY, "");
@@ -73,8 +76,26 @@ public class InformationActivity extends AppCompatActivity {
             }
         };
         this.buttonStart.setOnClickListener(startListener);
+
+        buttonManageMap.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(InformationActivity.this, MapsActivity.class);
+                startActivityForResult(intent, 1);
+            }
+        });
+
     }
 
-
+    @Override
+    public void onBackPressed() {
+        if(!backButtonPressed){
+            Toast.makeText(this, "Click back again to exit.", Toast.LENGTH_LONG).show();
+            backButtonPressed = true;
+        } else {
+            finish();
+            System.exit(0);
+        }
+    }
 
 }

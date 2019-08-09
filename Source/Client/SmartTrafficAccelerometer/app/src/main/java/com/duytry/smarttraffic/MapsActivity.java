@@ -66,6 +66,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private AlertDialog dialogShockPointInfo;
     private AlertDialog dialogRoadInfo;
     private static final int DEFAULT_ZOOM = 16;
+    private static final int WIDE_ZOOM = 13;
 
     private Socket mSocket = MySocketFactory.getInstance().getMySocket();
 
@@ -377,6 +378,13 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         mMap.clear();
         for (ShockPointEntity shockPoint : shockPointList) {
             shockingPointMarker(shockPoint);
+        }
+        //Move to first shock point
+        if(!shockPointList.isEmpty()){
+            ShockPointEntity shockPoint = shockPointList.get(0);
+            mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(
+                    new LatLng(shockPoint.getLatitude(),
+                            shockPoint.getLongitude()), WIDE_ZOOM));
         }
     }
 

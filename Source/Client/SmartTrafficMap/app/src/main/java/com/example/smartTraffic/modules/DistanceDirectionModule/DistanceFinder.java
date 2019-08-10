@@ -33,7 +33,6 @@ public class DistanceFinder {
     }
 
     public void execute() throws UnsupportedEncodingException {
-        //listener.onDirectionFinderStart();
         new DownloadRawData().execute(createUrlToDirection());
     }
 
@@ -86,8 +85,10 @@ public class DistanceFinder {
             return;
         JSONObject jsonData = new JSONObject(data);
         JSONArray jsonRows = jsonData.getJSONArray("rows");
-        JSONArray jsonElements = jsonRows.getJSONArray(0);
-        JSONObject jsonDistance = jsonElements.getJSONObject(0);
+        JSONObject jsonElementRow = jsonRows.getJSONObject(0);
+        JSONArray jsonElements = jsonElementRow.getJSONArray("elements");
+        JSONObject jsonElement = jsonElements.getJSONObject(0);
+        JSONObject jsonDistance = jsonElement.getJSONObject("distance");
         int distance = jsonDistance.getInt("value");
         listener.onDistanceFinderSuccess(distance, shockPoint, distanceAsTheCrowFlies);
     }

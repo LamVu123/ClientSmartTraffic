@@ -142,7 +142,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         etOrigin = (EditText) findViewById(R.id.etOrigin);
         etDestination = (EditText) findViewById(R.id.etDestination);
 
-
         //start event
         btnFindPath.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -265,6 +264,12 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 //        listInputPoints.add(new LatLng(21.002750, 105.661569));
 //        onSnapPointFinderStart(listInputPoints);
 //        onShockPointGetterStart("DCT08");
+
+        ShockPointEntity pointEntity = new ShockPointEntity(1,21.002833,105.662258);
+        Location location = new Location("start point");
+        location.setLatitude(21.002858);
+        location.setLongitude(105.662652);
+        onDistanceFinderStart(location,pointEntity,10);
     }
 
 
@@ -296,13 +301,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             e.printStackTrace();
         }
     }
-//    private void callAlert(String mess){
-//        AlertDialog.Builder alert = new AlertDialog.Builder(MapsActivity.this);
-//        alert.setTitle("ok");
-//        alert.setMessage(mess);
-//        alert.setPositiveButton("OK", null);
-//        alert.show();
-//    }
 
     //set permission to access location and getCurrentLocation
     private void setPermission() {
@@ -361,19 +359,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             alertDialog.show();
         }
     }
-
-
-
-    /**
-     * Manipulates the map once available.
-     * This callback is triggered when the map is ready to be used.
-     * This is where we can add markers or lines, add listeners or move the camera. In this case,
-     * we just add a marker near Sydney, Australia.
-     * If Google Play services is not installed on the device, the user will be prompted to install
-     * it inside the SupportMapFragment. This method will only be triggered once the user has
-     * installed Google Play services and returned to the app.
-     */
-
 
     private void sendRequestDirection() {
         String origin = etOrigin.getText().toString();

@@ -1,9 +1,9 @@
 package com.example.smartTraffic.modules.DistanceDirectionModule;
+
 import android.location.Location;
 import android.os.AsyncTask;
 
 import com.example.smartTraffic.entity.ShockPointEntity;
-import com.google.android.gms.maps.model.LatLng;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -18,7 +18,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 
 public class DistanceFinder {
-    private static final String DIRECTION_URL_API = "https://maps.googleapis.com/maps/api/directions/json?";
+    private static final String DISTANCE_URL_API = "https://maps.googleapis.com/maps/api/distancematrix/json?";
     private static final String GOOGLE_API_KEY = "AIzaSyAknAPT_Qiyp5u9xtCuKzuGL9auMxsYWuU";
     private DistanceFinderListener listener;
     private Location currentLocation;
@@ -39,12 +39,10 @@ public class DistanceFinder {
 
     //create url to direction
     private String createUrlToDirection() throws UnsupportedEncodingException {
-        String urlOrigin = String.valueOf(currentLocation.getLatitude())+", "+currentLocation.getLongitude();
-        String urlDestination = String.valueOf(shockPoint.getLatitude())+", "+ shockPoint.getLongitude();
-
-        return DIRECTION_URL_API + "origin=" + urlOrigin + "&destination=" + urlDestination + "&key=" + GOOGLE_API_KEY;
+        String urlOrigin = String.valueOf(currentLocation.getLatitude()) + ", " + currentLocation.getLongitude();
+        String urlDestination = String.valueOf(shockPoint.getLatitude()) + ", " + shockPoint.getLongitude();
+        return DISTANCE_URL_API + "units=imperial&origins=" + urlOrigin + "&destinations=" + urlDestination + "&key=" + GOOGLE_API_KEY;
     }
-
 
 
     private class DownloadRawData extends AsyncTask<String, Void, String> {
@@ -86,14 +84,11 @@ public class DistanceFinder {
     private void parseJSon(String data) throws JSONException {
         if (data == null)
             return;
-        int distance = 0;
         JSONObject jsonData = new JSONObject(data);
-        JSONArray jsonRoutes = jsonData.getJSONArray("routes");
-            JSONObject jsonRoute = jsonRoutes.getJSONObject(0);
-            JSONArray jsonLegs = jsonRoute.getJSONArray("legs");
-            JSONObject jsonLeg = jsonLegs.getJSONObject(0);
-            JSONObject jsonDistance = jsonLeg.getJSONObject("distance");
-            distance = jsonDistance.getInt("value");
+        JSONArray jsonRows = jsonData.getJSONArray("rows");
+        JSONArray jsonElements = jsonRows.getJSONArray(0);
+        JSONObject jsonDistance = jsonElements.getJSONObject(0);
+        int distance = jsonDistance.getInt("value");
         listener.onDistanceFinderSuccess(distance, shockPoint, distanceAsTheCrowFlies);
     }
 }

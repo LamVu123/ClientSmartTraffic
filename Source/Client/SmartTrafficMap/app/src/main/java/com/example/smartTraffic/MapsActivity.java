@@ -4,6 +4,8 @@ import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.app.ProgressDialog;
+import android.arch.lifecycle.MutableLiveData;
+import android.arch.lifecycle.Observer;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -96,6 +98,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     private boolean mLocationPermissionGranted;
     private Location mLastKnownLocation;
+    private static String roadName;
     private FusedLocationProviderClient mFusedLocationProviderClient;
     private static final int DEFAULT_ZOOM = 16;
     private static final int DIRECTION_ZOOM = 19;
@@ -106,6 +109,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private static boolean lastCheckShockPointAhead = false;
     private static boolean isMessageDisplayed = false;
     private static String SHOCK_POINT_MARKER_TITTLE = "Shock point";
+    private MutableLiveData<Boolean> checkLocationMode = new MutableLiveData<>();
 
     private static ArrayList<ShockPointEntity> shockPointAheads;
     private static ArrayList<ShockPointEntity> incomingShockPoints;
@@ -234,6 +238,23 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         });
         shockPointAheads = new ArrayList<>();
         incomingShockPoints = new ArrayList<>();
+        checkLocationMode.postValue(true);
+        checkLocationMode.observe(this, new Observer<Boolean>() {
+            @Override
+            public void onChanged(@Nullable Boolean mode) {
+                if (mode != null ) {
+                    isWarnningOn = !mode;
+                    if(mode){
+                        stopLocationUpdates(locationShockPointCallback);
+                    } else {
+                        createShockPointLocationRequest();
+                        mFusedLocationProviderClient.requestLocationUpdates(shockPointLocationRequest,
+                                locationShockPointCallback,
+                                null /* Looper */);
+                    }
+                }
+            }
+        });
 //        List<LatLng> listInputPoints = new ArrayList<>();
 //        listInputPoints.add(new LatLng(21.003226, 105.663500));
 //        listInputPoints.add(new LatLng(21.002905, 105.663350));
@@ -572,24 +593,32 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 .icon(BitmapDescriptorFactory.fromResource(R.drawable.icon_shocking_point)));
     }
 
-    LocationRequest locationRequest;
+    LocationRequest roadLocationRequest;
+    LocationRequest shockPointLocationRequest;
 
-    protected void createLocationRequest() {
-        locationRequest = LocationRequest.create();
-        locationRequest.setInterval(1000);
-        locationRequest.setFastestInterval(500);
-        locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+    protected void createShockPointLocationRequest() {
+        shockPointLocationRequest = LocationRequest.create();
+        shockPointLocationRequest.setInterval(1000);
+        shockPointLocationRequest.setFastestInterval(500);
+        shockPointLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+    }
+
+    protected void createRoadLocationRequest() {
+        roadLocationRequest = LocationRequest.create();
+        roadLocationRequest.setInterval(10000);
+        roadLocationRequest.setFastestInterval(5000);
+        roadLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
     }
 
     @SuppressLint("MissingPermission")
     private void startLocationUpdates() {
-        createLocationRequest();
-        mFusedLocationProviderClient.requestLocationUpdates(locationRequest,
-                locationCallback,
+        createRoadLocationRequest();
+        mFusedLocationProviderClient.requestLocationUpdates(roadLocationRequest,
+                locationRoadCallback,
                 null /* Looper */);
     }
 
-    private LocationCallback locationCallback = new LocationCallback() {
+    private LocationCallback locationShockPointCallback = new LocationCallback() {
         @Override
         public void onLocationResult(LocationResult locationResult) {
             if (locationResult == null) {
@@ -630,6 +659,20 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                    }
                }
 
+            }
+        };
+    };
+
+    private LocationCallback locationRoadCallback = new LocationCallback() {
+        @Override
+        public void onLocationResult(LocationResult locationResult) {
+            if (locationResult == null) {
+                return;
+            }
+            for (Location location : locationResult.getLocations()) {
+                mLastKnownLocation = location;
+                String mlatlng = String.valueOf(location.getLatitude())+", "+location.getLongitude();
+                onAddressFinderStart(mlatlng);
             }
         };
     };
@@ -696,7 +739,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     }
 //dunglh 25/07/2019 end
 
-    private void stopLocationUpdates() {
+    private void stopLocationUpdates(LocationCallback locationCallback) {
         mFusedLocationProviderClient.removeLocationUpdates(locationCallback);
     }
 
@@ -711,9 +754,15 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     @Override
     public void onAddressFinderSuccess(String currentLongNameRoad, String currentShortNameRoad, String address) {
-        markerPin.setTitle(currentShortNameRoad + " - " + currentLongNameRoad);
-        markerPin.setSnippet(address);
-        markerPin.showInfoWindow();
+        if(!TextUtils.equals(roadName, currentShortNameRoad)
+            && !TextUtils.equals(currentLongNameRoad, "Unnamed Road")){
+            roadName = currentShortNameRoad;
+            onShockPointGetterStart(roadName);
+        }
+//        markerPin.setTitle(currentShortNameRoad + " - " + currentLongNameRoad);
+//        markerPin.setSnippet(address);
+//        markerPin.showInfoWindow();
+
     }
 
     @Override
@@ -815,7 +864,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         for ( ShockPointEntity shockPoint : shockPointList ) {
             shockingPointMarker(shockPoint);
         }
-        isWarnningOn = true;
+        checkLocationMode.postValue(false);
     }
 
     @Override

@@ -265,11 +265,11 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 //        onSnapPointFinderStart(listInputPoints);
 //        onShockPointGetterStart("DCT08");
 
-        ShockPointEntity pointEntity = new ShockPointEntity(1,21.002833,105.662258);
-        Location location = new Location("start point");
-        location.setLatitude(21.002858);
-        location.setLongitude(105.662652);
-        onDistanceFinderStart(location,pointEntity,10);
+//        ShockPointEntity pointEntity = new ShockPointEntity(1,21.002833,105.662258);
+//        Location location = new Location("start point");
+//        location.setLatitude(21.002858);
+//        location.setLongitude(105.662652);
+//        onDistanceFinderStart(location,pointEntity,10);
     }
 
 

@@ -1,4 +1,4 @@
-package com.duytry.smarttraffic.AddressModule;
+package com.duytry.smarttraffic.modules.AddressModule;
 
 public interface AddressFinderListener {
     void onAddressFinderStart(String latlng);

@@ -1,4 +1,4 @@
-package com.duytry.smarttraffic.AddressModule;
+package com.duytry.smarttraffic.modules.AddressModule;
 
 import android.os.AsyncTask;
 

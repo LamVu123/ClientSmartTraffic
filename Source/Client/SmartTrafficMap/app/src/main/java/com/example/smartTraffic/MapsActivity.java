@@ -116,6 +116,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     private static ArrayList<ShockPointEntity> shockPointAheads;
     private static ArrayList<ShockPointEntity> incomingShockPoints;
+    private static ArrayList<Marker> shockPointMarkers = new ArrayList<>();
     private PowerManager pm;
 
 
@@ -592,6 +593,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 .title(SHOCK_POINT_MARKER_TITTLE)
                 .snippet(shockingPoint.toString())
                 .icon(BitmapDescriptorFactory.fromResource(R.drawable.icon_shocking_point)));
+        shockPointMarkers.add(pointMarker);
     }
 
     LocationRequest roadLocationRequest;
@@ -863,7 +865,11 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         //sort based on current location
         Collections.sort(shockPointList, new ShockPointEntity.SortByDistance(mLastKnownLocation));
         this.shockPointAheads = shockPointList;
-        mMap.clear();
+//        mMap.clear();
+        //clear old shock point
+        for ( Marker marker : shockPointMarkers ) {
+            marker.remove();
+        }
         for ( ShockPointEntity shockPoint : shockPointList ) {
             shockingPointMarker(shockPoint);
         }

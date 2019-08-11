@@ -64,6 +64,7 @@ import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -106,8 +107,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private static final int DEFAULT_ZOOM = 16;
     private static final int DIRECTION_ZOOM = 19;
     private final LatLng mDefaultLocation = new LatLng(21.013138, 105.526876);
-    private static final int CONSIDER_DISTANCE = 800;
-    private static final int WARNING_DISTANCE = 200;
+    private static final int CONSIDER_DISTANCE = 600;
+    private static final int WARNING_DISTANCE = 300;
     private static boolean isWarnningOn = false;
     private static boolean lastCheckShockPointAhead = false;
     private static boolean isMessageDisplayed = false;
@@ -280,6 +281,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 //        location.setLatitude(21.002858);
 //        location.setLongitude(105.662652);
 //        onDistanceFinderStart(location,pointEntity,10);
+        showAlertDialogAutoClose("Warning", "Ahead " + WARNING_DISTANCE + "m is a shocking point", 3000);
     }
 
 
@@ -687,7 +689,14 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 //        final Ringtone r = RingtoneManager.getRingtone(getApplicationContext(), notification);
 //        r.play();
 
-        final MediaPlayer[] mp = {MediaPlayer.create(this, R.raw.alert1)};
+        final MediaPlayer[] mp;
+
+        Locale current = getResources().getConfiguration().locale;
+        if(TextUtils.equals(current.getCountry(), "VN")){
+            mp = new MediaPlayer[]{MediaPlayer.create(this, R.raw.alert_vietnamese)};
+        } else {
+            mp = new MediaPlayer[]{MediaPlayer.create(this, R.raw.alert_english)};
+        }
 
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle(tittle);

@@ -281,7 +281,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 //        location.setLatitude(21.002858);
 //        location.setLongitude(105.662652);
 //        onDistanceFinderStart(location,pointEntity,10);
-        showAlertDialogAutoClose("Warning", "Ahead " + WARNING_DISTANCE + "m is a shocking point", 3000);
+//        showAlertDialogAutoClose("Warning", "Ahead " + WARNING_DISTANCE + "m is a shocking point", 3000);
     }
 
 

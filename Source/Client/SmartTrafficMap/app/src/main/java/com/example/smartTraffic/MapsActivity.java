@@ -6,6 +6,7 @@ import android.app.AlertDialog;
 import android.app.ProgressDialog;
 import android.arch.lifecycle.MutableLiveData;
 import android.arch.lifecycle.Observer;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -14,6 +15,7 @@ import android.location.Location;
 import android.media.MediaPlayer;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.PowerManager;
 import android.os.Process;
 import android.provider.Settings;
 import android.support.annotation.NonNull;
@@ -25,6 +27,7 @@ import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.util.Log;
 import android.view.View;
+import android.view.WindowManager;
 import android.view.animation.AlphaAnimation;
 import android.view.animation.Animation;
 import android.widget.AdapterView;
@@ -113,11 +116,13 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     private static ArrayList<ShockPointEntity> shockPointAheads;
     private static ArrayList<ShockPointEntity> incomingShockPoints;
+    private PowerManager pm;
 
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         setContentView(R.layout.activity_maps);
 
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
@@ -126,8 +131,13 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         mapFragment.getMapAsync(this);
         mFusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
 
-        layoutMain = (LinearLayout) findViewById(R.id.layoutMain);
-        //layoutMain.setAlpha((float) 0.5);
+        PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
+        PowerManager.WakeLock keep_app_running= pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Keep App Running");
+        try{
+            keep_app_running.acquire();
+        }catch (Exception e){
+            e.printStackTrace();
+        }
 
         turnOnGPS();
         if (Build.VERSION.SDK_INT >= 23) {
@@ -153,7 +163,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 CameraUpdate cameraUpdate = CameraUpdateFactory
                         .newLatLngZoom(currentLocation, DIRECTION_ZOOM);
                 mMap.animateCamera(cameraUpdate);
-
             }
         });
 
@@ -318,6 +327,13 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 //            getCurrentLocation();
 //            getDeviceLocation();
         }
+
+//        if ((ActivityCompat.checkSelfPermission(this, Manifest.permission.WAKE_LOCK)
+//                != PackageManager.PERMISSION_GRANTED)){
+//            ActivityCompat.requestPermissions(this, new String[]
+//                            {Manifest.permission.WAKE_LOCK}
+//                    , REQUEST_CODE);
+//        }
     }
 
     //user accept permission to access location
@@ -638,7 +654,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                        incomingPointLocation.setLongitude(incomingPoint.getLongitude());
                        float incomingDistance =  incomingPointLocation.distanceTo(location);
                        if(incomingDistance <= WARNING_DISTANCE){
-                           showAlertDialogAutoClose("Warning", "Ahead " + WARNING_DISTANCE + "m is a shocking point", 5000);
+                           showAlertDialogAutoClose("Warning", "Ahead " + WARNING_DISTANCE + "m is a shocking point", 3000);
                            incomingShockPoints.remove(incomingPoint);
                        }
                    }
@@ -678,6 +694,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         builder.setNeutralButton("OK", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
+
                 if (mp[0].isPlaying()) {
                     mp[0].stop();
                     mp[0].release();
@@ -689,6 +706,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         dlg.show();
         mp[0].start();
+        mp[0].setVolume(1,1);
 
 
         final Timer t = new Timer();
@@ -873,4 +891,5 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         shockPointAheads.remove(shockPoint);
     }
 //Shock Point Module End
+
 }

@@ -2,6 +2,7 @@ package com.example.smartTraffic;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
+import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.ProgressDialog;
 import android.arch.lifecycle.MutableLiveData;
@@ -11,6 +12,9 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.graphics.drawable.Drawable;
+import android.graphics.drawable.DrawableContainer;
+import android.inputmethodservice.Keyboard;
 import android.location.Location;
 import android.media.MediaPlayer;
 import android.os.Build;
@@ -30,10 +34,12 @@ import android.view.View;
 import android.view.WindowManager;
 import android.view.animation.AlphaAnimation;
 import android.view.animation.Animation;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.TextView;
@@ -61,6 +67,7 @@ import com.google.android.gms.tasks.Task;
 import com.google.android.gms.location.*;
 
 import java.io.UnsupportedEncodingException;
+import java.security.PrivateKey;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -83,6 +90,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         SnapPointFinderListener, DistanceFinderListener {
 
     private GoogleMap mMap;
+    private View view;
     private static final int REQUEST_CODE = 0;
     private static final String TAG = "MapsActivity";
     public static LatLng currentLocation;
@@ -91,7 +99,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private ListView listView;
     private EditText etOrigin;
     private EditText etDestination;
-    private LinearLayout layoutMain;
+    private TextView tvDuration;
+    private TextView tvDistance;
+    private LinearLayout layout_dur_dis;
     private List<Marker> originMarkers = new ArrayList<>();
     private List<Marker> destinationMarkers = new ArrayList<>();
     private List<Polyline> polylinePaths = new ArrayList<>();
@@ -99,6 +109,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private String placeTyping;
     Boolean checkStatusListView = false;
     boolean checkWhereTyping = false;
+    private ImageView iv_about;
 
     private boolean mLocationPermissionGranted;
     private Location mLastKnownLocation;
@@ -118,7 +129,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private static ArrayList<ShockPointEntity> shockPointAheads;
     private static ArrayList<ShockPointEntity> incomingShockPoints;
     private static ArrayList<Marker> shockPointMarkers = new ArrayList<>();
-    private PowerManager pm;
+    private PowerManager pm = null;
     private boolean isDirection = false;
 
 
@@ -149,11 +160,18 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 //            getDeviceLocation();
         }
 
+        view = (View) findViewById(android.R.id.content);
+        layout_dur_dis = findViewById(R.id.layout_dur_dis);
+        tvDuration = (TextView) findViewById(R.id.tvDuration);
+        tvDistance = (TextView) findViewById(R.id.tvDistance);
+        iv_about = (ImageView) findViewById(R.id.iv_about);
         listView = (ListView) findViewById(R.id.listView);
         btnFindPath = (Button) findViewById(R.id.btnFindPath);
         btnSetting = (Button) findViewById(R.id.btnSetting);
         etOrigin = (EditText) findViewById(R.id.etOrigin);
         etDestination = (EditText) findViewById(R.id.etDestination);
+
+        layout_dur_dis.setVisibility(View.INVISIBLE);
 
         //start event
         btnFindPath.setOnClickListener(new View.OnClickListener() {
@@ -162,14 +180,18 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 Animation animation = new AlphaAnimation(1.1f, 0.3f);
                 animation.setDuration(150);
                 btnFindPath.startAnimation(animation);
+                listView.setVisibility(View.GONE);
                 if (!isDirection) {
                     sendRequestDirection();
                 } else {
-                    originMarkers = null;
-                    destinationMarkers = null;
-                    polylinePaths = null;
+                    btnFindPath.setBackgroundResource(R.drawable.ic_find2);
+                    etOrigin.setText("");
+                    etDestination.setText("");
+                    tvDistance.setText("");
+                    tvDuration.setText("");
                     clearDirection();
                     isDirection = false;
+                    layout_dur_dis.setVisibility(View.INVISIBLE);
                 }
             }
         });
@@ -235,6 +257,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 autoCompletePlacesRequest();
             }
         });
+
         listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
@@ -269,6 +292,33 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                                 null /* Looper */);
                     }
                 }
+            }
+        });
+
+        iv_about.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                AlertDialog.Builder builder = new AlertDialog.Builder(v.getContext());
+                builder.setIcon(R.drawable.ic_logo);
+                builder.setTitle("Smart Traffic");
+                builder.setMessage(
+                        "Lâm Hải Vũ\n" +
+                        "Vũ Văn Cường\n" +
+                        "Lê Hồng Dũng\n" +
+                        "Nguyễn Duy Trí\n" +
+                        "\n" +
+                        "A good journey to you!!!\n" +
+                        "\n" +
+                        "Copyright\u00A9 FPT University");
+
+                builder.setPositiveButton("Love Us !", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialogInterface, int i) {
+                        dialogInterface.dismiss();
+                    }
+                });
+                AlertDialog alertDialog = builder.create();
+                builder.show();
             }
         });
 //        List<LatLng> listInputPoints = new ArrayList<>();
@@ -370,7 +420,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 }
             });
             AlertDialog alertDialog = builder.create();
-            alertDialog.show();
+            builder.show();
         }
     }
 
@@ -396,11 +446,58 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }
     }
 
+    public static void hideKeyboard(Context context, View view) {
+        InputMethodManager imm = (InputMethodManager) context.getSystemService(Activity.INPUT_METHOD_SERVICE);
+        imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+    }
+
     @Override
     public void onDirectionFinderStart() {
-        progressDialog = ProgressDialog.show(this, "Please wait.",
-                "Finding direction..!", true);
+        progressDialog =
+                ProgressDialog.show(this, "Please wait !",
+                "Finding direction...", true);
+        if(isDirection){
+
+        }
+        hideKeyboard(getApplicationContext(),view);
         clearDirection();
+    }
+
+    @Override
+    public void onDirectionFinderSuccess(List<Route> routes) {
+        progressDialog.dismiss();
+        isDirection = true;
+        layout_dur_dis.setVisibility(View.VISIBLE);
+        polylinePaths = new ArrayList<>();
+        originMarkers = new ArrayList<>();
+        destinationMarkers = new ArrayList<>();
+
+        btnFindPath.setBackgroundResource(R.drawable.ic_park);
+        for (Route route : routes) {
+            mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(route.startLocation, DIRECTION_ZOOM));
+            tvDuration.setText(route.duration.text);
+            tvDistance.setText(route.distance.text);
+
+            originMarkers.add(mMap.addMarker(new MarkerOptions()
+                    .icon(BitmapDescriptorFactory.fromResource(R.drawable.start_blue))
+                    .title(route.startAddress)
+                    .position(route.startLocation)
+            ));
+            destinationMarkers.add(mMap.addMarker(new MarkerOptions()
+                    .icon(BitmapDescriptorFactory.fromResource(R.drawable.end_green))
+                    .title(route.endAddress)
+                    .position(route.endLocation)));
+
+            PolylineOptions polylineOptions = new PolylineOptions().
+                    geodesic(true).
+                    color(Color.BLUE).
+                    width(20);
+
+            for (int i = 0; i < route.points.size(); i++)
+                polylineOptions.add(route.points.get(i));
+
+            polylinePaths.add(mMap.addPolyline(polylineOptions));
+        }
     }
 
     private void clearDirection() {
@@ -420,41 +517,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             for (Polyline polyline : polylinePaths) {
                 polyline.remove();
             }
-        }
-    }
-
-    @Override
-    public void onDirectionFinderSuccess(List<Route> routes) {
-        progressDialog.dismiss();
-        isDirection = true;
-        polylinePaths = new ArrayList<>();
-        originMarkers = new ArrayList<>();
-        destinationMarkers = new ArrayList<>();
-
-        for (Route route : routes) {
-            mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(route.startLocation, DIRECTION_ZOOM));
-            ((TextView) findViewById(R.id.tvDuration)).setText(route.duration.text);
-            ((TextView) findViewById(R.id.tvDistance)).setText(route.distance.text);
-
-            originMarkers.add(mMap.addMarker(new MarkerOptions()
-                    .icon(BitmapDescriptorFactory.fromResource(R.drawable.start_blue))
-                    .title(route.startAddress)
-                    .position(route.startLocation)
-            ));
-            destinationMarkers.add(mMap.addMarker(new MarkerOptions()
-                    .icon(BitmapDescriptorFactory.fromResource(R.drawable.end_green))
-                    .title(route.endAddress)
-                    .position(route.endLocation)));
-
-            PolylineOptions polylineOptions = new PolylineOptions().
-                    geodesic(true).
-                    color(Color.BLUE).
-                    width(10);
-
-            for (int i = 0; i < route.points.size(); i++)
-                polylineOptions.add(route.points.get(i));
-
-            polylinePaths.add(mMap.addPolyline(polylineOptions));
         }
     }
 
@@ -915,5 +977,4 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         shockPointAheads.remove(shockPoint);
     }
 //Shock Point Module End
-
 }

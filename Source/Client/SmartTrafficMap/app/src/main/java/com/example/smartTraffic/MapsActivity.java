@@ -119,6 +119,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private static ArrayList<ShockPointEntity> incomingShockPoints;
     private static ArrayList<Marker> shockPointMarkers = new ArrayList<>();
     private PowerManager pm;
+    private boolean isDirection = false;
 
 
     @Override
@@ -161,10 +162,15 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 Animation animation = new AlphaAnimation(1.1f, 0.3f);
                 animation.setDuration(150);
                 btnFindPath.startAnimation(animation);
-                sendRequestDirection();
-                CameraUpdate cameraUpdate = CameraUpdateFactory
-                        .newLatLngZoom(currentLocation, DIRECTION_ZOOM);
-                mMap.animateCamera(cameraUpdate);
+                if (!isDirection) {
+                    sendRequestDirection();
+                } else {
+                    originMarkers = null;
+                    destinationMarkers = null;
+                    polylinePaths = null;
+                    clearDirection();
+                    isDirection = false;
+                }
             }
         });
 
@@ -327,16 +333,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                     , REQUEST_CODE);
         } else {
             mLocationPermissionGranted = true;
-//            getCurrentLocation();
-//            getDeviceLocation();
         }
-
-//        if ((ActivityCompat.checkSelfPermission(this, Manifest.permission.WAKE_LOCK)
-//                != PackageManager.PERMISSION_GRANTED)){
-//            ActivityCompat.requestPermissions(this, new String[]
-//                            {Manifest.permission.WAKE_LOCK}
-//                    , REQUEST_CODE);
-//        }
     }
 
     //user accept permission to access location
@@ -344,8 +341,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         mLocationPermissionGranted = true;
-        //getCurrentLocation();
-//        getDeviceLocation();
     }
 
     // Check gps, if turn off => request turn on .
@@ -405,7 +400,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     public void onDirectionFinderStart() {
         progressDialog = ProgressDialog.show(this, "Please wait.",
                 "Finding direction..!", true);
+        clearDirection();
+    }
 
+    private void clearDirection() {
         if (originMarkers != null) {
             for (Marker marker : originMarkers) {
                 marker.remove();
@@ -428,6 +426,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     @Override
     public void onDirectionFinderSuccess(List<Route> routes) {
         progressDialog.dismiss();
+        isDirection = true;
         polylinePaths = new ArrayList<>();
         originMarkers = new ArrayList<>();
         destinationMarkers = new ArrayList<>();
@@ -505,7 +504,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
                         @Override
                         public void onClick(DialogInterface dialog, int which) {
-                            // Do nothing
+                            // Do dismiss notify
                             dialog.dismiss();
                         }
                     });
@@ -676,7 +675,13 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             }
             for (Location location : locationResult.getLocations()) {
                 mLastKnownLocation = location;
-                String mlatlng = String.valueOf(location.getLatitude())+", "+location.getLongitude();
+                String mlatlng = String.valueOf(location.getLatitude()) + ", " + location.getLongitude();
+                currentLocation = new LatLng(mLastKnownLocation.getLatitude(), mLastKnownLocation.getLongitude());
+                if (isDirection) {
+                    CameraUpdate cameraUpdate = CameraUpdateFactory
+                            .newLatLngZoom(currentLocation, DIRECTION_ZOOM);
+                    mMap.animateCamera(cameraUpdate);
+                }
                 onAddressFinderStart(mlatlng);
             }
         };

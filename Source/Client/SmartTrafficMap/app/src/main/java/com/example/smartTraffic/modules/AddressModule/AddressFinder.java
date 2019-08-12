@@ -2,6 +2,8 @@ package com.example.smartTraffic.modules.AddressModule;
 
 import android.os.AsyncTask;
 
+import com.google.android.gms.maps.model.Marker;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -29,10 +31,17 @@ public class AddressFinder {
     private String currentShortNameRoad;
     private String currentLatLong;
     private AddressFinderListener listener;
+    private Marker marker;
 
     public AddressFinder(String currentLatLong, AddressFinderListener listener) {
         this.currentLatLong = currentLatLong;
         this.listener = listener;
+    }
+
+    public AddressFinder(String currentLatLong, AddressFinderListener listener, Marker marker) {
+        this.currentLatLong = currentLatLong;
+        this.listener = listener;
+        this.marker = marker;
     }
 
     //create url with Geocoding API
@@ -107,7 +116,12 @@ public class AddressFinder {
                     break;
                 };
             }
-            listener.onAddressFinderSuccess(currentLongNameRoad,currentShortNameRoad,currentAddress);
+            if(marker != null ){
+                listener.onAddressFinderSuccess(currentLongNameRoad, currentShortNameRoad, currentAddress, marker);
+            } else {
+                listener.onAddressFinderSuccess(currentLongNameRoad, currentShortNameRoad, currentAddress);
+            }
+
         }
     }
 }

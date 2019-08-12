@@ -12,9 +12,6 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
-import android.graphics.drawable.Drawable;
-import android.graphics.drawable.DrawableContainer;
-import android.inputmethodservice.Keyboard;
 import android.location.Location;
 import android.media.MediaPlayer;
 import android.os.Build;
@@ -67,7 +64,6 @@ import com.google.android.gms.tasks.Task;
 import com.google.android.gms.location.*;
 
 import java.io.UnsupportedEncodingException;
-import java.security.PrivateKey;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -118,16 +114,16 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private static final int DEFAULT_ZOOM = 16;
     private static final int DIRECTION_ZOOM = 19;
     private final LatLng mDefaultLocation = new LatLng(21.013138, 105.526876);
-    private static final int CONSIDER_DISTANCE = 600;
+    private static final int CONSIDER_DISTANCE = 400;
     private static final int WARNING_DISTANCE = 300;
     private static boolean isWarnningOn = false;
-    private static boolean lastCheckShockPointAhead = false;
+//    private static boolean lastCheckShockPointAhead = false;
     private static boolean isMessageDisplayed = false;
     private static String SHOCK_POINT_MARKER_TITTLE = "Shock point";
     private MutableLiveData<Boolean> checkLocationMode = new MutableLiveData<>();
 
-    private static ArrayList<ShockPointEntity> shockPointAheads;
-    private static ArrayList<ShockPointEntity> incomingShockPoints;
+    private static ArrayList<ShockPointEntity> shockPointLists;
+//    private static ArrayList<ShockPointEntity> incomingShockPoints;
     private static ArrayList<Marker> shockPointMarkers = new ArrayList<>();
     private PowerManager pm = null;
     private boolean isDirection = false;
@@ -275,8 +271,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
             }
         });
-        shockPointAheads = new ArrayList<>();
-        incomingShockPoints = new ArrayList<>();
+        shockPointLists = new ArrayList<>();
+//        incomingShockPoints = new ArrayList<>();
         checkLocationMode.postValue(true);
         checkLocationMode.observe(this, new Observer<Boolean>() {
             @Override
@@ -520,8 +516,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }
     }
 
-    Marker markerPin;
-
     @Override
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
@@ -537,52 +531,88 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         mMap.setOnMapClickListener(new GoogleMap.OnMapClickListener() {
             @Override
             public void onMapClick(LatLng latLng) {
-                String mlatlng = String.valueOf(latLng.latitude) + ", " + latLng.longitude;
-                onAddressFinderStart(mlatlng);
-                markerPin = mMap.addMarker(new MarkerOptions()
+                String mlatlng = String.valueOf(latLng.latitude)+", "+latLng.longitude;
+
+                Marker markerPin = mMap.addMarker(new MarkerOptions()
                         .position(latLng));
+                onAddressFinderStart(mlatlng, markerPin);
 //                markerPin.setIcon(BitmapDescriptorFactory.fromResource(R.drawable.ic_markerpin));
             }
         });
 
-        mMap.setOnMarkerClickListener(new GoogleMap.OnMarkerClickListener() {
+//        mMap.setOnMarkerClickListener(new GoogleMap.OnMarkerClickListener() {
+//            @Override
+//            public boolean onMarkerClick(final Marker marker) {
+//                if (TextUtils.equals(marker.getTitle(), SHOCK_POINT_MARKER_TITTLE)) {
+//
+//                } else {
+//                    AlertDialog.Builder builder = new AlertDialog.Builder(MapsActivity.this);
+//                    builder.setTitle("Road: " + marker.getTitle());
+//                    builder.setMessage("Address: " + marker.getSnippet());
+//                    builder.setPositiveButton("Delete Point", new DialogInterface.OnClickListener() {
+//
+//                        public void onClick(DialogInterface dialog, int which) {
+//                            marker.remove();
+//                            dialog.dismiss();
+//                        }
+//                    });
+//
+//                    builder.setNegativeButton("Close", new DialogInterface.OnClickListener() {
+//
+//                        @Override
+//                        public void onClick(DialogInterface dialog, int which) {
+//                            // Do dismiss notify
+//                            dialog.dismiss();
+//                        }
+//                    });
+//
+//                    builder.setNeutralButton("Get shock point", new DialogInterface.OnClickListener() {
+//                        @Override
+//                        public void onClick(DialogInterface dialog, int which) {
+//                            String[] roadName = marker.getTitle().split(" - ");
+//                            onShockPointGetterStart(roadName[0]);
+//                            dialog.dismiss();
+//                        }
+//                    });
+//                    AlertDialog alert = builder.create();
+//                    builder.show();
+//                }
+//                return false;
+//            }
+//        });
+        mMap.setOnInfoWindowClickListener(new GoogleMap.OnInfoWindowClickListener() {
             @Override
-            public boolean onMarkerClick(final Marker marker) {
-                if (TextUtils.equals(marker.getTitle(), SHOCK_POINT_MARKER_TITTLE)) {
+            public void onInfoWindowClick(final Marker marker) {
+                AlertDialog.Builder builder = new AlertDialog.Builder(MapsActivity.this);
+                builder.setTitle("Road: " + marker.getTitle());
+                builder.setMessage("Address: " + marker.getSnippet());
+                builder.setPositiveButton("Delete Point", new DialogInterface.OnClickListener() {
 
-                } else {
-                    AlertDialog.Builder builder = new AlertDialog.Builder(MapsActivity.this);
-                    builder.setTitle("Road: " + marker.getTitle());
-                    builder.setMessage("Address: " + marker.getSnippet());
-                    builder.setPositiveButton("Delete Point", new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int which) {
+                        marker.remove();
+                        dialog.dismiss();
+                    }
+                });
 
-                        public void onClick(DialogInterface dialog, int which) {
-                            marker.remove();
-                            dialog.dismiss();
-                        }
-                    });
+                builder.setNegativeButton("Close", new DialogInterface.OnClickListener() {
 
-                    builder.setNegativeButton("Close", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        // Do dismiss notify
+                        dialog.dismiss();
+                    }
+                });
 
-                        @Override
-                        public void onClick(DialogInterface dialog, int which) {
-                            // Do dismiss notify
-                            dialog.dismiss();
-                        }
-                    });
-
-                    builder.setNeutralButton("Get shock point", new DialogInterface.OnClickListener() {
-                        @Override
-                        public void onClick(DialogInterface dialog, int which) {
-                            String[] roadName = marker.getTitle().split(" - ");
-                            onShockPointGetterStart(roadName[0]);
-                            dialog.dismiss();
-                        }
-                    });
-                    AlertDialog alert = builder.create();
-                    builder.show();
-                }
-                return false;
+                builder.setNeutralButton("Get shock point", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        String[] roadName = marker.getTitle().split(" - ");
+                        onShockPointGetterStart(roadName[0]);
+                        dialog.dismiss();
+                    }
+                });
+                AlertDialog alert = builder.create();
+                builder.show();
             }
         });
         //dunglh 25/07 start
@@ -623,7 +653,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
          * cases when a location is not available.
          */
         try {
-            if (mLocationPermissionGranted) {
+            String provider = Settings.Secure.
+                    getString(getContentResolver(),
+                            Settings.Secure.LOCATION_PROVIDERS_ALLOWED);
+            if (mLocationPermissionGranted && provider.contains("gps")) {
                 Task locationResult = mFusedLocationProviderClient.getLastLocation();
                 locationResult.addOnCompleteListener(this, new OnCompleteListener<Location>() {
                     @Override
@@ -691,39 +724,35 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 return;
             }
             for (Location location : locationResult.getLocations()) {
-                mLastKnownLocation = location;
-                if (isWarnningOn) {
-                    if (!shockPointAheads.isEmpty() && !lastCheckShockPointAhead) {
-                        ShockPointEntity nearestPoint = shockPointAheads.get(0);
-                        Location nearestPointLocation = new Location("shock point ahead");
-                        nearestPointLocation.setLatitude(nearestPoint.getLatitude());
-                        nearestPointLocation.setLongitude(nearestPoint.getLongitude());
-                        float distanceInMeters = nearestPointLocation.distanceTo(location);
-                        if (distanceInMeters <= CONSIDER_DISTANCE) {
-                            onDistanceFinderStart(mLastKnownLocation, nearestPoint, distanceInMeters);
-                        } else {
-                            lastCheckShockPointAhead = true;
-                            final Timer t = new Timer();
-                            t.schedule(new TimerTask() {
-                                public void run() {
-                                    lastCheckShockPointAhead = false;
-                                    t.cancel(); // also just top the timer thread, otherwise, you may receive a crash report
-                                }
-                            }, (int) ((distanceInMeters - CONSIDER_DISTANCE) / 30 * 1000));
-                        }
-                    }
-                    if (!incomingShockPoints.isEmpty()) {
-                        ShockPointEntity incomingPoint = incomingShockPoints.get(0);
-                        Location incomingPointLocation = new Location("incoming shock point");
-                        incomingPointLocation.setLatitude(incomingPoint.getLatitude());
-                        incomingPointLocation.setLongitude(incomingPoint.getLongitude());
-                        float incomingDistance = incomingPointLocation.distanceTo(location);
-                        if (incomingDistance <= WARNING_DISTANCE) {
-                            showAlertDialogAutoClose("Warning", "Ahead " + WARNING_DISTANCE + "m is a shocking point", 3000);
-                            incomingShockPoints.remove(incomingPoint);
-                        }
-                    }
-                }
+               mLastKnownLocation = location;
+               if(isWarnningOn){
+//                   if(!shockPointLists.isEmpty() && !lastCheckShockPointAhead){
+                   if(!shockPointLists.isEmpty()){
+                       int numberOfConsider = shockPointLists.size();
+                       numberOfConsider = numberOfConsider > 3 ? 3 : numberOfConsider;
+                       for (int i = 0; i < numberOfConsider; i++) {
+                           ShockPointEntity shockPoint = shockPointLists.get(i);
+                           Location pointLocation = new Location("shock point ahead");
+                           pointLocation.setLatitude(shockPoint.getLatitude());
+                           pointLocation.setLongitude(shockPoint.getLongitude());
+                           float distanceInMeters =  pointLocation.distanceTo(location);
+                           if(distanceInMeters <= CONSIDER_DISTANCE){
+                               onDistanceFinderStart(mLastKnownLocation, shockPoint, distanceInMeters);
+                           }
+                       }
+                   }
+//                   if(!incomingShockPoints.isEmpty()){
+//                       ShockPointEntity incomingPoint = incomingShockPoints.get(0);
+//                       Location incomingPointLocation = new Location("incoming shock point");
+//                       incomingPointLocation.setLatitude(incomingPoint.getLatitude());
+//                       incomingPointLocation.setLongitude(incomingPoint.getLongitude());
+//                       float incomingDistance =  incomingPointLocation.distanceTo(location);
+//                       if(incomingDistance <= WARNING_DISTANCE){
+//                           showAlertDialogAutoClose("Warning", "Ahead " + WARNING_DISTANCE + "m is a shocking point", 3000);
+//                           incomingShockPoints.remove(incomingPoint);
+//                       }
+//                   }
+               }
 
             }
         }
@@ -838,16 +867,33 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     }
 
     @Override
+    public void onAddressFinderStart(String latlng, Marker marker) {
+        try {
+            new AddressFinder(latlng,this, marker).execute();
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
     public void onAddressFinderSuccess(String currentLongNameRoad, String currentShortNameRoad, String address) {
         if (!TextUtils.equals(roadName, currentShortNameRoad)
                 && !TextUtils.equals(currentLongNameRoad, "Unnamed Road")) {
             roadName = currentShortNameRoad;
             onShockPointGetterStart(roadName);
         }
-//        markerPin.setTitle(currentShortNameRoad + " - " + currentLongNameRoad);
-//        markerPin.setSnippet(address);
-//        markerPin.showInfoWindow();
+    }
+    Marker markerPin;
 
+    @Override
+    public void onAddressFinderSuccess(String currentLongNameRoad, String currentShortNameRoad, String address, Marker marker) {
+        if(markerPin != null){
+            markerPin.remove();
+        }
+        marker.setTitle(currentShortNameRoad + " - " + currentLongNameRoad);
+        marker.setSnippet(address);
+        marker.showInfoWindow();
+        markerPin = marker;
     }
 
     @Override
@@ -931,24 +977,33 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         mSocket.on(ON_GET_POINTS_EVENT, onGetShockPointsListener);
     }
 
+    Timer shockPointSortingTimer;
+
     public void onShockPointGetterSuccess(final ArrayList<ShockPointEntity> shockPointList) {
         if (mLastKnownLocation == null) {
             final Timer t = new Timer();
             t.schedule(new TimerTask() {
                 public void run() {
                     onShockPointGetterSuccess(shockPointList);
-                    t.cancel(); // also just top the timer thread, otherwise, you may receive a crash report
+                    t.cancel();
                 }
             }, 2000);
             return;
         }
         //sort based on current location
         Collections.sort(shockPointList, new ShockPointEntity.SortByDistance(mLastKnownLocation));
-        this.shockPointAheads = shockPointList;
+        shockPointSortingTimer = new Timer();
+        shockPointSortingTimer.schedule(new TimerTask() {
+            public void run() {
+                Collections.sort(shockPointList, new ShockPointEntity.SortByDistance(mLastKnownLocation));
+//                Toast.makeText(MapsActivity.this, "Last know location: " + mLastKnownLocation.getLatitude() + ", " +mLastKnownLocation.getLongitude(), Toast.LENGTH_LONG).show();
+            }
+        }, 20000,20000);
+        this.shockPointLists = shockPointList;
 //        mMap.clear();
         //clear old shock point
-        for (Marker marker : shockPointMarkers) {
-            marker.remove();
+        for (int i = 0; i < shockPointMarkers.size(); i++) {
+            shockPointMarkers.get(i).remove();
         }
         for (ShockPointEntity shockPoint : shockPointList) {
             shockingPointMarker(shockPoint);
@@ -967,14 +1022,11 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     @Override
     public void onDistanceFinderSuccess(int distance, ShockPointEntity shockPoint, float distanceAsTheCrowFlies) {
-        boolean isThisShockPointAhead = false;
-        if (distance < distanceAsTheCrowFlies * 1.1) {
-            isThisShockPointAhead = true;
+        if(distance < distanceAsTheCrowFlies * 1.1){
+//            incomingShockPoints.add(shockPoint);
+            showAlertDialogAutoClose("Warning", "There is a shock point ahead", 3000);
         }
-        if (isThisShockPointAhead) {
-            incomingShockPoints.add(shockPoint);
-        }
-        shockPointAheads.remove(shockPoint);
+//        shockPointLists.remove(shockPoint);
     }
 //Shock Point Module End
 }

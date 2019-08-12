@@ -135,10 +135,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         mFusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
 
         PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
-        PowerManager.WakeLock keep_app_running= pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Keep App Running");
-        try{
+        PowerManager.WakeLock keep_app_running = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Keep App Running");
+        try {
             keep_app_running.acquire();
-        }catch (Exception e){
+        } catch (Exception e) {
             e.printStackTrace();
         }
 
@@ -184,7 +184,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                     Intent intent = new Intent(getApplicationContext(), SettingsActivity.class);
                     intent.putExtra("maptype", mMap.getMapType());
                     startActivityForResult(intent, 1);
-                }catch (Exception e){
+                } catch (Exception e) {
                     e.printStackTrace();
                 }
             }
@@ -258,9 +258,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         checkLocationMode.observe(this, new Observer<Boolean>() {
             @Override
             public void onChanged(@Nullable Boolean mode) {
-                if (mode != null ) {
+                if (mode != null) {
                     isWarnningOn = !mode;
-                    if(mode){
+                    if (mode) {
                         stopLocationUpdates(locationShockPointCallback);
                     } else {
                         createShockPointLocationRequest();
@@ -475,7 +475,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         mMap.setOnMapClickListener(new GoogleMap.OnMapClickListener() {
             @Override
             public void onMapClick(LatLng latLng) {
-                String mlatlng = String.valueOf(latLng.latitude)+", "+latLng.longitude;
+                String mlatlng = String.valueOf(latLng.latitude) + ", " + latLng.longitude;
                 onAddressFinderStart(mlatlng);
                 markerPin = mMap.addMarker(new MarkerOptions()
                         .position(latLng));
@@ -486,12 +486,12 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         mMap.setOnMarkerClickListener(new GoogleMap.OnMarkerClickListener() {
             @Override
             public boolean onMarkerClick(final Marker marker) {
-                if(TextUtils.equals(marker.getTitle(), SHOCK_POINT_MARKER_TITTLE)){
+                if (TextUtils.equals(marker.getTitle(), SHOCK_POINT_MARKER_TITTLE)) {
 
                 } else {
                     AlertDialog.Builder builder = new AlertDialog.Builder(MapsActivity.this);
-                    builder.setTitle("Road: "+marker.getTitle());
-                    builder.setMessage("Address: "+marker.getSnippet());
+                    builder.setTitle("Road: " + marker.getTitle());
+                    builder.setMessage("Address: " + marker.getSnippet());
                     builder.setPositiveButton("Delete Point", new DialogInterface.OnClickListener() {
 
                         public void onClick(DialogInterface dialog, int which) {
@@ -569,7 +569,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                         if (task.isSuccessful()) {
                             // Set the map's camera position to the current location of the device.
                             mLastKnownLocation = task.getResult();
-                            currentLocation = new LatLng(mLastKnownLocation.getLatitude(),mLastKnownLocation.getLongitude());
+                            currentLocation = new LatLng(mLastKnownLocation.getLatitude(), mLastKnownLocation.getLongitude());
                             mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(
                                     new LatLng(mLastKnownLocation.getLatitude(),
                                             mLastKnownLocation.getLongitude()), DEFAULT_ZOOM));
@@ -629,42 +629,44 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 return;
             }
             for (Location location : locationResult.getLocations()) {
-               mLastKnownLocation = location;
-               if(isWarnningOn){
-                   if(!shockPointAheads.isEmpty() && !lastCheckShockPointAhead){
-                       ShockPointEntity nearestPoint = shockPointAheads.get(0);
-                       Location nearestPointLocation = new Location("shock point ahead");
-                       nearestPointLocation.setLatitude(nearestPoint.getLatitude());
-                       nearestPointLocation.setLongitude(nearestPoint.getLongitude());
-                       float distanceInMeters =  nearestPointLocation.distanceTo(location);
-                       if(distanceInMeters <= CONSIDER_DISTANCE){
-                           onDistanceFinderStart(mLastKnownLocation, nearestPoint, distanceInMeters);
-                       } else {
-                           lastCheckShockPointAhead = true;
-                           final Timer t = new Timer();
-                           t.schedule(new TimerTask() {
-                               public void run() {
-                                   lastCheckShockPointAhead = false;
-                                   t.cancel(); // also just top the timer thread, otherwise, you may receive a crash report
-                               }
-                           }, (int) ((distanceInMeters - CONSIDER_DISTANCE)/30*1000));
-                       }
-                   }
-                   if(!incomingShockPoints.isEmpty()){
-                       ShockPointEntity incomingPoint = incomingShockPoints.get(0);
-                       Location incomingPointLocation = new Location("incoming shock point");
-                       incomingPointLocation.setLatitude(incomingPoint.getLatitude());
-                       incomingPointLocation.setLongitude(incomingPoint.getLongitude());
-                       float incomingDistance =  incomingPointLocation.distanceTo(location);
-                       if(incomingDistance <= WARNING_DISTANCE){
-                           showAlertDialogAutoClose("Warning", "Ahead " + WARNING_DISTANCE + "m is a shocking point", 3000);
-                           incomingShockPoints.remove(incomingPoint);
-                       }
-                   }
-               }
+                mLastKnownLocation = location;
+                if (isWarnningOn) {
+                    if (!shockPointAheads.isEmpty() && !lastCheckShockPointAhead) {
+                        ShockPointEntity nearestPoint = shockPointAheads.get(0);
+                        Location nearestPointLocation = new Location("shock point ahead");
+                        nearestPointLocation.setLatitude(nearestPoint.getLatitude());
+                        nearestPointLocation.setLongitude(nearestPoint.getLongitude());
+                        float distanceInMeters = nearestPointLocation.distanceTo(location);
+                        if (distanceInMeters <= CONSIDER_DISTANCE) {
+                            onDistanceFinderStart(mLastKnownLocation, nearestPoint, distanceInMeters);
+                        } else {
+                            lastCheckShockPointAhead = true;
+                            final Timer t = new Timer();
+                            t.schedule(new TimerTask() {
+                                public void run() {
+                                    lastCheckShockPointAhead = false;
+                                    t.cancel(); // also just top the timer thread, otherwise, you may receive a crash report
+                                }
+                            }, (int) ((distanceInMeters - CONSIDER_DISTANCE) / 30 * 1000));
+                        }
+                    }
+                    if (!incomingShockPoints.isEmpty()) {
+                        ShockPointEntity incomingPoint = incomingShockPoints.get(0);
+                        Location incomingPointLocation = new Location("incoming shock point");
+                        incomingPointLocation.setLatitude(incomingPoint.getLatitude());
+                        incomingPointLocation.setLongitude(incomingPoint.getLongitude());
+                        float incomingDistance = incomingPointLocation.distanceTo(location);
+                        if (incomingDistance <= WARNING_DISTANCE) {
+                            showAlertDialogAutoClose("Warning", "Ahead " + WARNING_DISTANCE + "m is a shocking point", 3000);
+                            incomingShockPoints.remove(incomingPoint);
+                        }
+                    }
+                }
 
             }
-        };
+        }
+
+        ;
     };
 
     private LocationCallback locationRoadCallback = new LocationCallback() {
@@ -684,10 +686,12 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 }
                 onAddressFinderStart(mlatlng);
             }
-        };
+        }
+
+        ;
     };
 
-    private void showAlertDialogAutoClose(String tittle, String message, final int time){
+    private void showAlertDialogAutoClose(String tittle, String message, final int time) {
 
 //        String uriPath = "android.resource://"+getPackageName()+"/raw/alert1.mp3";
 //        Uri notification = MediaStore.Audio.Media.getContentUriForPath(uriPath);;
@@ -697,7 +701,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         final MediaPlayer[] mp;
 
         Locale current = getResources().getConfiguration().locale;
-        if(TextUtils.equals(current.getCountry(), "VN")){
+        if (TextUtils.equals(current.getCountry(), "VN")) {
             mp = new MediaPlayer[]{MediaPlayer.create(this, R.raw.alert_vietnamese)};
         } else {
             mp = new MediaPlayer[]{MediaPlayer.create(this, R.raw.alert_english)};
@@ -722,13 +726,13 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         dlg.show();
         mp[0].start();
-        mp[0].setVolume(1,1);
+        mp[0].setVolume(1, 1);
 
 
         final Timer t = new Timer();
         t.schedule(new TimerTask() {
             public void run() {
-                if(dlg.isShowing()){
+                if (dlg.isShowing()) {
                     if (mp[0].isPlaying()) {
                         mp[0].stop();
                         mp[0].release();
@@ -749,10 +753,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        if(mSocket.hasListeners(ON_GET_POINTS_EVENT)){
+        if (mSocket.hasListeners(ON_GET_POINTS_EVENT)) {
             mSocket.off(ON_GET_POINTS_EVENT);
         }
-        if(mSocket.connected()){
+        if (mSocket.connected()) {
             mSocket.disconnect();
         }
     }
@@ -765,7 +769,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     @Override
     public void onAddressFinderStart(String latlng) {
         try {
-            new AddressFinder(latlng,this).execute();
+            new AddressFinder(latlng, this).execute();
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
         }
@@ -773,8 +777,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     @Override
     public void onAddressFinderSuccess(String currentLongNameRoad, String currentShortNameRoad, String address) {
-        if(!TextUtils.equals(roadName, currentShortNameRoad)
-            && !TextUtils.equals(currentLongNameRoad, "Unnamed Road")){
+        if (!TextUtils.equals(roadName, currentShortNameRoad)
+                && !TextUtils.equals(currentLongNameRoad, "Unnamed Road")) {
             roadName = currentShortNameRoad;
             onShockPointGetterStart(roadName);
         }
@@ -788,7 +792,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         if (requestCode == 1) {
             if (resultCode == MapsActivity.RESULT_OK) {
-                int maptype =data.getIntExtra("typeResult",1);
+                int maptype = data.getIntExtra("typeResult", 1);
                 mMap.setMapType(maptype);
             }
         }
@@ -858,7 +862,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     };
 
     public void onShockPointGetterStart(String roadName) {
-        if(!mSocket.connected()){
+        if (!mSocket.connected()) {
             mSocket.connect();
         }
         mSocket.emit("nameRoad", roadName);
@@ -866,7 +870,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     }
 
     public void onShockPointGetterSuccess(final ArrayList<ShockPointEntity> shockPointList) {
-        if(mLastKnownLocation == null){
+        if (mLastKnownLocation == null) {
             final Timer t = new Timer();
             t.schedule(new TimerTask() {
                 public void run() {
@@ -881,10 +885,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         this.shockPointAheads = shockPointList;
 //        mMap.clear();
         //clear old shock point
-        for ( Marker marker : shockPointMarkers ) {
+        for (Marker marker : shockPointMarkers) {
             marker.remove();
         }
-        for ( ShockPointEntity shockPoint : shockPointList ) {
+        for (ShockPointEntity shockPoint : shockPointList) {
             shockingPointMarker(shockPoint);
         }
         checkLocationMode.postValue(false);
@@ -893,7 +897,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     @Override
     public void onDistanceFinderStart(Location currentLocation, ShockPointEntity shockPoint, float distanceAsTheCrowFlies) {
         try {
-            new DistanceFinder(this,currentLocation,shockPoint, distanceAsTheCrowFlies).execute();
+            new DistanceFinder(this, currentLocation, shockPoint, distanceAsTheCrowFlies).execute();
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
         }
@@ -902,10 +906,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     @Override
     public void onDistanceFinderSuccess(int distance, ShockPointEntity shockPoint, float distanceAsTheCrowFlies) {
         boolean isThisShockPointAhead = false;
-        if(distance < distanceAsTheCrowFlies * 1.1){
+        if (distance < distanceAsTheCrowFlies * 1.1) {
             isThisShockPointAhead = true;
         }
-        if(isThisShockPointAhead){
+        if (isThisShockPointAhead) {
             incomingShockPoints.add(shockPoint);
         }
         shockPointAheads.remove(shockPoint);

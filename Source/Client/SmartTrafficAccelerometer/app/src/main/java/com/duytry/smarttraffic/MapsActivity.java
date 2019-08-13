@@ -66,6 +66,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private AlertDialog dialogShockPointInfo;
     private AlertDialog dialogRoadInfo;
     private static final int DEFAULT_ZOOM = 16;
+    private static final int WIDE_ZOOM = 13;
 
     private Socket mSocket = MySocketFactory.getInstance().getMySocket();
 
@@ -222,17 +223,39 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         saveButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                editRoad(road, roadName.getText().toString());
-                editButton.setVisibility(View.VISIBLE);
-                saveButton.setVisibility(View.GONE);
-                deleteButton.setEnabled(true);
-                roadName.setEnabled(false);
+                boolean isValid = validateNewName(roadName.getText().toString());
+                if(isValid){
+                    editRoad(road, roadName.getText().toString());
+                    editButton.setVisibility(View.VISIBLE);
+                    saveButton.setVisibility(View.GONE);
+                    deleteButton.setEnabled(true);
+                    roadName.setEnabled(false);
+                } else {
+                    FragmentManager fragmentManager = getSupportFragmentManager();
+                    MyDialogFragment dialogFragment = new MyDialogFragment();
+                    dialogFragment.setTittle(getString(R.string.road_name_not_valid_tittle));
+                    dialogFragment.setMessage(getString(R.string.road_name_not_valid_message));
+                    dialogFragment.show(fragmentManager, "warning road name not valid");
+                }
+
             }
         });
         builder.setView(roadInfoView);
         dialogRoadInfo = builder.create();
         dialogRoadInfo.show();
 
+    }
+
+    private boolean validateNewName(String newName){
+        if(TextUtils.isEmpty(newName)){
+            return false;
+        }
+        for ( RoadEntity road : roadList ) {
+            if(TextUtils.equals(road.getShortName(), newName)){
+                return false;
+            }
+        }
+        return true;
     }
 
     private void deleteRoad(RoadEntity road){
@@ -355,6 +378,13 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         mMap.clear();
         for (ShockPointEntity shockPoint : shockPointList) {
             shockingPointMarker(shockPoint);
+        }
+        //Move to first shock point
+        if(!shockPointList.isEmpty()){
+            ShockPointEntity shockPoint = shockPointList.get(0);
+            mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(
+                    new LatLng(shockPoint.getLatitude(),
+                            shockPoint.getLongitude()), WIDE_ZOOM));
         }
     }
 

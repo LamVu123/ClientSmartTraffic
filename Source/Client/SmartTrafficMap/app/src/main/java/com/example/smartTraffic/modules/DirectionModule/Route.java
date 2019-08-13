@@ -1,4 +1,4 @@
-package DirectionModule;
+package com.example.smartTraffic.modules.DirectionModule;
 
 import com.google.android.gms.maps.model.LatLng;
 

@@ -3,8 +3,8 @@
 <TextView xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/placeView"
     android:layout_width="match_parent"
-    android:layout_height="50dp"
+    android:layout_height="wrap_content"
+    android:padding="10dip"
     android:layout_weight="1"
-    android:text="sdawd"
     android:textSize="16sp" />
 

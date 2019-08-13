@@ -1,4 +1,4 @@
-package RoadModule;
+package com.example.smartTraffic.modules.RoadModule;
 
 import com.google.android.gms.maps.model.LatLng;
 

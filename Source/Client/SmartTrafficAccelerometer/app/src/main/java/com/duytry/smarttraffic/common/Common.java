@@ -32,6 +32,8 @@ public final class Common {
     public static final int VIEW_DATA_RESULT_CODE = 2001;
     public static final int VIEW_DATA_REQUEST_CODE = 2000;
 
+    public static final int CONNECTION_TIME_OUT = 15000;
+
     public static final String md5(final String s) {
         final String MD5 = "MD5";
         try {

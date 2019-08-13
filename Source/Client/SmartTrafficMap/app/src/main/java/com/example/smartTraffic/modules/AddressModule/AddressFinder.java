@@ -1,6 +1,8 @@
-package AddressModule;
+package com.example.smartTraffic.modules.AddressModule;
 
 import android.os.AsyncTask;
+
+import com.google.android.gms.maps.model.Marker;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -29,10 +31,17 @@ public class AddressFinder {
     private String currentShortNameRoad;
     private String currentLatLong;
     private AddressFinderListener listener;
+    private Marker marker;
 
     public AddressFinder(String currentLatLong, AddressFinderListener listener) {
         this.currentLatLong = currentLatLong;
         this.listener = listener;
+    }
+
+    public AddressFinder(String currentLatLong, AddressFinderListener listener, Marker marker) {
+        this.currentLatLong = currentLatLong;
+        this.listener = listener;
+        this.marker = marker;
     }
 
     //create url with Geocoding API
@@ -93,7 +102,7 @@ public class AddressFinder {
             for (int i = 0; i < jsonRoutes.length(); i++) {
                 JSONObject jsonRoute = jsonRoutes.getJSONObject(i);
                 JSONArray jType = jsonRoute.getJSONArray("types");
-                if(jType.get(0).toString().equals("route")){
+                if(jType.get(0).toString().equals("street_address")){
                     currentAddress = jsonRoute.getString("formatted_address");
                     JSONArray addressComponents = jsonRoute.getJSONArray("address_components");
                     for (int j = 0; j < addressComponents.length(); j++){
@@ -107,7 +116,12 @@ public class AddressFinder {
                     break;
                 };
             }
-            listener.onAddressFinderSuccess(currentLongNameRoad,currentShortNameRoad,currentAddress);
+            if(marker != null ){
+                listener.onAddressFinderSuccess(currentLongNameRoad, currentShortNameRoad, currentAddress, marker);
+            } else {
+                listener.onAddressFinderSuccess(currentLongNameRoad, currentShortNameRoad, currentAddress);
+            }
+
         }
     }
 }

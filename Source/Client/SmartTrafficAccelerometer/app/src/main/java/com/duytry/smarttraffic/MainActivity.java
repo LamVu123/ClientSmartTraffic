@@ -41,6 +41,8 @@ import com.duytry.smarttraffic.common.MySocketFactory;
 import com.duytry.smarttraffic.fragment.MyDialogFragment;
 import com.duytry.smarttraffic.entity.MyLocation;
 import com.duytry.smarttraffic.fragment.ViewDataFragment;
+import com.duytry.smarttraffic.modules.RoadModule.SnapPointFinder;
+import com.duytry.smarttraffic.modules.RoadModule.SnapPointFinderListener;
 import com.github.mikephil.charting.charts.LineChart;
 import com.github.mikephil.charting.components.YAxis;
 import com.github.mikephil.charting.data.LineData;
@@ -51,16 +53,19 @@ import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.maps.model.LatLng;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.UnsupportedEncodingException;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -70,7 +75,7 @@ import java.util.List;
 import java.util.Queue;
 
 
-public class MainActivity extends AppCompatActivity implements SensorEventListener {
+public class MainActivity extends AppCompatActivity implements SensorEventListener, SnapPointFinderListener {
     private Queue dataExample;
     private static final int REQUEST_PERMISSION_REQUEST_CODE = 1000;
     private static final int INITIAL_REQUEST=1337;
@@ -302,7 +307,9 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             @Override
             public void onClick(View v) {
                 Log.d(TAG, "Button Shock Point clicked");
-                String file = saveData(Common.SHOCK_POINT_ACTION);
+                String path = saveData(Common.SHOCK_POINT_ACTION);
+                beginSnapPoint(path);
+
             }
         };
         btnShockPoint.setOnClickListener(saveShockPointListener);
@@ -823,4 +830,66 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         startActivityForResult(intent, MAP_REQUEST_CODE);
     }
 
+    private void beginSnapPoint(String path){
+        File file = new File(path);
+        if(file.exists()) {
+            try (BufferedReader br = new BufferedReader(new FileReader(file))) {
+                StringBuilder dataStr = new StringBuilder();
+                String strCurrentLine = br.readLine();
+                double oldLatitude = 0;
+                double oldLongitude = 0;
+                List<LatLng> points = new ArrayList<>();
+                String lastLine = "";
+                while ((strCurrentLine = br.readLine()) != null) {
+                    String[] arrValues = strCurrentLine.split(Common.SPACE_CHARACTER);
+                    double latitude = Double.valueOf(arrValues[4]);
+                    double longitude = Double.valueOf(arrValues[5]);
+                    if(latitude == oldLatitude && oldLongitude == longitude){
+                        continue;
+                    }
+                    LatLng point = new LatLng(latitude, longitude);
+                    points.add(point);
+                    oldLatitude = latitude;
+                    oldLongitude = longitude;
+                    lastLine = strCurrentLine;
+                }
+                if(!TextUtils.isEmpty(lastLine)){
+                    onSnapPointFinderStart(points, path, lastLine);
+                }
+            } catch (IOException e) {
+                Toast.makeText(this, Common.ERROR_MESSAGE, Toast.LENGTH_LONG).show();
+                e.printStackTrace();
+            }
+        }
+    }
+
+    @Override
+    public void onSnapPointFinderStart(List<LatLng> listInputPoints, String filePath, String lastLine) {
+        try {
+            new SnapPointFinder(this, listInputPoints, filePath, lastLine).execute();
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void onSnapPointFinderSuccess(List<LatLng> listOutputPoints, String filePath, String lastLine) {
+        File file = new File(filePath);
+        try (BufferedWriter bw = new BufferedWriter(new FileWriter(file, true))) {
+            String[] arrValues = lastLine.split(Common.SPACE_CHARACTER);
+            StringBuilder newLine = new StringBuilder();
+            arrValues[4] = String.valueOf(listOutputPoints.get(listOutputPoints.size() - 1).latitude);
+            arrValues[5] = String.valueOf(listOutputPoints.get(listOutputPoints.size() - 1).longitude);
+            for (int i = 0; i < arrValues.length - 1; i++) {
+                newLine.append(arrValues[i]);
+                newLine.append(Common.SPACE_CHARACTER);
+            }
+            newLine.append(arrValues[arrValues.length - 1]);
+            bw.newLine();
+            bw.append(newLine.toString());
+        } catch (IOException | ArrayIndexOutOfBoundsException e) {
+            Toast.makeText(this, Common.ERROR_MESSAGE, Toast.LENGTH_LONG).show();
+            e.printStackTrace();
+        }
+    }
 }

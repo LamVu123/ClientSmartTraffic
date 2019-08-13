@@ -10,7 +10,7 @@
     <string name="btn_parking">Parking</string>
     <string name="textView_speed_label">Speed</string>
     <string name="btn_finish">Finish</string>
-    <string name="btn_manage">Manage Map</string>
+    <string name="btn_manage">Map</string>
     <string name="btn_back_to_main">Go Back</string>
     <string name="btn_change_road">Change Road</string>
     <string name="btn_tool">Tools</string>

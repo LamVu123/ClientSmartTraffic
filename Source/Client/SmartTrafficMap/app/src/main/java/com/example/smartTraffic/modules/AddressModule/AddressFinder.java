@@ -102,7 +102,7 @@ public class AddressFinder {
             for (int i = 0; i < jsonRoutes.length(); i++) {
                 JSONObject jsonRoute = jsonRoutes.getJSONObject(i);
                 JSONArray jType = jsonRoute.getJSONArray("types");
-                if(jType.get(0).toString().equals("route")){
+                if(jType.get(0).toString().equals("street_address")){
                     currentAddress = jsonRoute.getString("formatted_address");
                     JSONArray addressComponents = jsonRoute.getJSONArray("address_components");
                     for (int j = 0; j < addressComponents.length(); j++){

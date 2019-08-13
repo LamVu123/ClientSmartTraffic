@@ -542,7 +542,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         mMap.setOnMarkerClickListener(new GoogleMap.OnMarkerClickListener() {
             @Override
             public boolean onMarkerClick(final Marker marker) {
-                if(marker.getTitle().equals("Shock point")){
+                if(marker.getTitle().equals(SHOCK_POINT_MARKER_TITTLE)){
                     return false;
                 }
                 AlertDialog.Builder builder = new AlertDialog.Builder(MapsActivity.this);
@@ -583,7 +583,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         mMap.setOnInfoWindowClickListener(new GoogleMap.OnInfoWindowClickListener() {
             @Override
             public void onInfoWindowClick(final Marker marker) {
-                if(marker.getTitle().equals("Shock point")){
+                if(marker.getTitle().equals(SHOCK_POINT_MARKER_TITTLE)){
                     return;
                 }
                 AlertDialog.Builder builder = new AlertDialog.Builder(MapsActivity.this);
@@ -598,12 +598,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                         switch (which){
                             case 0:
                                 etOrigin.setText(pinLatLng);
-                                etDestination.setSelection(0,etDestination.length());
                                 checkStatusListView = true;
                                 break;
                             case 1:
                                 etDestination.setText(pinLatLng);
-                                etOrigin.setSelection(0,etOrigin.length());
                                 checkStatusListView = true;
                                 break;
                             case 2:

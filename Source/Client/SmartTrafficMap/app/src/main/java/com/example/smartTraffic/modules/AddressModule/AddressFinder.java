@@ -114,7 +114,21 @@ public class AddressFinder {
                         }
                     }
                     break;
-                };
+                } else {
+                    if(jType.get(0).toString().equals("route")){
+                        currentAddress = jsonRoute.getString("formatted_address");
+                        JSONArray addressComponents = jsonRoute.getJSONArray("address_components");
+                        for (int j = 0; j < addressComponents.length(); j++){
+                            JSONObject addressComponent = addressComponents.getJSONObject(j);
+                            if(addressComponent.getJSONArray("types").get(0).equals("route")){
+                                currentLongNameRoad = addressComponent.getString("long_name");
+                                currentShortNameRoad = addressComponent.getString("short_name");
+                                break;
+                            }
+                        }
+                        break;
+                    }
+                }
             }
             if(marker != null ){
                 listener.onAddressFinderSuccess(currentLongNameRoad, currentShortNameRoad, currentAddress, marker);

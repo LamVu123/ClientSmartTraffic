@@ -12,14 +12,14 @@
         android:id="@+id/layoutMain"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
         android:background="@drawable/my_transprarent"
+        android:orientation="horizontal"
         tools:ignore="MissingConstraints">
 
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginLeft="0dp"
+            android:layout_marginTop="6dp"
             android:orientation="vertical">
 
             <LinearLayout
@@ -38,8 +38,8 @@
                     android:id="@+id/etOrigin"
                     android:layout_width="180dp"
                     android:layout_height="wrap_content"
-                    android:singleLine="true"
                     android:hint="Your Location"
+                    android:singleLine="true"
                     android:textColorHint="@color/common_google_signin_btn_text_light_pressed"
                     android:textSize="14sp" />
             </LinearLayout>
@@ -60,8 +60,8 @@
                     android:id="@+id/etDestination"
                     android:layout_width="180dp"
                     android:layout_height="wrap_content"
-                    android:singleLine="true"
                     android:hint="Destination"
+                    android:singleLine="true"
                     android:textSize="14sp" />
 
             </LinearLayout>
@@ -72,10 +72,12 @@
             android:layout_height="wrap_content"
             android:layout_marginLeft="0dp"
             android:orientation="vertical">
+
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal">
+
                 <Button
                     android:id="@+id/btnFindPath"
                     android:layout_width="35dp"
@@ -105,39 +107,48 @@
                 android:id="@+id/layout_dur_dis"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal">
+                android:orientation="vertical">
 
-
-                <ImageView
-                    android:layout_width="30dp"
-                    android:layout_height="30dp"
-                    android:layout_marginLeft="10dp"
-                    android:layout_marginTop="5dp"
-                    android:src="@drawable/ic_distance" />
-
-                <TextView
-                    android:id="@+id/tvDistance"
+                <LinearLayout
                     android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="5dp"
-                    android:layout_marginLeft="0dp"
-                    android:text="0km" />
+                    android:layout_height="wrap_content">
 
-                <ImageView
-                    android:layout_width="30dp"
-                    android:layout_height="30dp"
-                    android:layout_marginLeft="5dp"
-                    android:layout_marginTop="5dp"
-                    android:padding="5dp"
-                    android:src="@drawable/ic_clock" />
+                    <ImageView
+                        android:layout_width="25dp"
+                        android:layout_height="25dp"
+                        android:layout_marginLeft="10dp"
+                        android:layout_marginTop="0dp"
+                        android:src="@drawable/ic_distance" />
 
-                <TextView
-                    android:id="@+id/tvDuration"
+                    <TextView
+                        android:id="@+id/tvDistance"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginLeft="5dp"
+                        android:layout_marginTop="5dp"
+                        android:text="0km" />
+                </LinearLayout>
+
+                <LinearLayout
                     android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="5dp"
-                    android:layout_marginLeft="0dp"
-                    android:text="0min" />
+                    android:layout_height="wrap_content">
+
+                    <ImageView
+                        android:layout_width="25dp"
+                        android:layout_height="25dp"
+                        android:layout_marginLeft="10dp"
+                        android:layout_marginTop="0dp"
+                        android:padding="5dp"
+                        android:src="@drawable/ic_clock" />
+
+                    <TextView
+                        android:id="@+id/tvDuration"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginLeft="5dp"
+                        android:layout_marginTop="2dp"
+                        android:text="0min" />
+                </LinearLayout>
 
             </LinearLayout>
         </LinearLayout>
@@ -154,7 +165,6 @@
         map:layout_constraintStart_toStartOf="parent"
         map:layout_constraintTop_toBottomOf="@+id/layoutMain"
         tools:ignore="MissingConstraints" />
-
 
 
     <fragment xmlns:android="http://schemas.android.com/apk/res/android"

@@ -188,6 +188,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                     clearDirection();
                     isDirection = false;
                     layout_dur_dis.setVisibility(View.INVISIBLE);
+                    etOrigin.setEnabled(true);
+                    etDestination.setEnabled(true);
                 }
             }
         });
@@ -464,6 +466,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         progressDialog.dismiss();
         isDirection = true;
         layout_dur_dis.setVisibility(View.VISIBLE);
+        etOrigin.setEnabled(false);
+        etDestination.setEnabled(false);
+
         polylinePaths = new ArrayList<>();
         originMarkers = new ArrayList<>();
         destinationMarkers = new ArrayList<>();

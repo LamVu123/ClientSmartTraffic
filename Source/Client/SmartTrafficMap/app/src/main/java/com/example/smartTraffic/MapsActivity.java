@@ -532,7 +532,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             @Override
             public void onMapClick(LatLng latLng) {
                 String mlatlng = String.valueOf(latLng.latitude) + ", " + latLng.longitude;
-
                 Marker markerPin = mMap.addMarker(new MarkerOptions()
                         .position(latLng));
                 onAddressFinderStart(mlatlng, markerPin);
@@ -543,6 +542,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         mMap.setOnMarkerClickListener(new GoogleMap.OnMarkerClickListener() {
             @Override
             public boolean onMarkerClick(final Marker marker) {
+                if(marker.getTitle().equals(SHOCK_POINT_MARKER_TITTLE)){
+                    return false;
+                }
                 AlertDialog.Builder builder = new AlertDialog.Builder(MapsActivity.this);
                 builder.setTitle(marker.getSnippet());
                 CharSequence[] choices = {"Direction from here","Direction to here","Get shock point","Delete Point","Close"};
@@ -552,26 +554,18 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                         String pinLatLng = String.valueOf(marker.getPosition().latitude)+", "+marker.getPosition().longitude;
                         switch (which){
                             case 0:
-                                if(marker.getSnippet().isEmpty()){
-                                    etOrigin.setText(pinLatLng);
-                                } else {
-                                    etOrigin.setText(marker.getSnippet());
-                                }
+                                etOrigin.setText(pinLatLng);
                                 etDestination.setSelection(0,etDestination.length());
                                 checkStatusListView = true;
                                 break;
                             case 1:
-                                if(marker.getSnippet().isEmpty()){
-                                    etDestination.setText(pinLatLng);
-                                } else {
-                                    etDestination.setText(marker.getSnippet());
-                                }
+                                etDestination.setText(pinLatLng);
                                 etOrigin.setSelection(0,etOrigin.length());
                                 checkStatusListView = true;
                                 break;
                             case 2:
-                                String[] roadName = marker.getTitle().split(" - ");
-                                onShockPointGetterStart(roadName[0]);
+                                //String[] roadName = marker.getTitle().split(" - ");
+                                onShockPointGetterStart(marker.getTitle());
                                 break;
                             case 3:
                                 marker.remove();
@@ -583,12 +577,15 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                     }
                 });
                 builder.create().show();
-                return false;
+                return true;
             }
         });
         mMap.setOnInfoWindowClickListener(new GoogleMap.OnInfoWindowClickListener() {
             @Override
             public void onInfoWindowClick(final Marker marker) {
+                if(marker.getTitle().equals(SHOCK_POINT_MARKER_TITTLE)){
+                    return;
+                }
                 AlertDialog.Builder builder = new AlertDialog.Builder(MapsActivity.this);
                 //builder.setTitle("Road: " + marker.getTitle());
                 //builder.setMessage("Address: " + marker.getSnippet());
@@ -600,26 +597,16 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                         String pinLatLng = String.valueOf(marker.getPosition().latitude)+", "+marker.getPosition().longitude;
                         switch (which){
                             case 0:
-                                if(marker.getSnippet().isEmpty()){
-                                    etOrigin.setText(pinLatLng);
-                                } else {
-                                    etOrigin.setText(marker.getSnippet());
-                                }
-                                etDestination.setSelection(0,etDestination.length());
+                                etOrigin.setText(pinLatLng);
                                 checkStatusListView = true;
                                 break;
                             case 1:
-                                if(marker.getSnippet().isEmpty()){
-                                    etDestination.setText(pinLatLng);
-                                } else {
-                                    etDestination.setText(marker.getSnippet());
-                                }
-                                etOrigin.setSelection(0,etOrigin.length());
+                                etDestination.setText(pinLatLng);
                                 checkStatusListView = true;
                                 break;
                             case 2:
-                                String[] roadName = marker.getTitle().split(" - ");
-                                onShockPointGetterStart(roadName[0]);
+                                //String[] roadName = marker.getTitle().split(" - ");
+                                onShockPointGetterStart(marker.getTitle());
                                 break;
                             case 3:
                                 marker.remove();
@@ -705,7 +692,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         Marker pointMarker = mMap.addMarker(new MarkerOptions()
                 .position(pointLatLng)
                 .title(SHOCK_POINT_MARKER_TITTLE)
-                .snippet(shockingPoint.toString())
+                //.snippet(shockingPoint.toString())
                 .icon(BitmapDescriptorFactory.fromResource(R.drawable.icon_shocking_point)));
         shockPointMarkers.add(pointMarker);
     }

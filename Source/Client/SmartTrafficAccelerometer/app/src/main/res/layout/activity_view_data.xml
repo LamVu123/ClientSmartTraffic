@@ -30,7 +30,7 @@
             android:id="@+id/view_data_fragment_2"
             android:name="com.duytry.smarttraffic.fragment.ViewDataFragment"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content" />
+            android:layout_height="match_parent" />
     </LinearLayout>
 
 </android.support.constraint.ConstraintLayout>

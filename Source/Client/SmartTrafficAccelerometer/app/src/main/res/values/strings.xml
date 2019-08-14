@@ -34,7 +34,7 @@
         <item>110km/h</item>
         <item>120km/h</item>
     </string-array>
-    <string name="title_activity_login">Sign in</string>
+    <string name="title_activity_login">Smart Traffic Collection</string>
     <string name="prompt_email">Username</string>
     <string name="prompt_password">Password</string>
     <string name="action_sign_in">Sign in</string>

@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">SmartTraffic</string>
+    <string name="app_name">Smart Traffic Collection</string>
     <string name="hint_editText_name">Enter name</string>
     <string name="hint_editText_road">Enter road</string>
     <string name="text_btn_start">Start</string>

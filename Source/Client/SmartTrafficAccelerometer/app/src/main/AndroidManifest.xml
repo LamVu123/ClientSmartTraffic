@@ -45,7 +45,9 @@
             </intent-filter>
         </activity>
         <activity android:name=".InformationActivity" />
-        <activity android:name=".MainActivity">
+        <activity
+            android:theme="@style/Theme.AppCompat.DayNight.NoActionBar"
+            android:name=".MainActivity">
             <intent-filter>
                 <category android:name="android.intent.category.ALTERNATIVE" />
             </intent-filter>

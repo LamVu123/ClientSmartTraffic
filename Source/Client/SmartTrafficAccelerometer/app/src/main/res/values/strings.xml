@@ -9,7 +9,7 @@
     <string name="btn_brake_down">Brake Down</string>
     <string name="btn_parking">Parking</string>
     <string name="textView_speed_label">Speed</string>
-    <string name="btn_finish">Finish</string>
+    <string name="btn_finish">Log out</string>
     <string name="btn_manage">Map</string>
     <string name="btn_back_to_main">Go Back</string>
     <string name="btn_change_road">Change Road</string>
@@ -24,6 +24,14 @@
     <string name="textView_road_name_hint">Road Name</string>
     <string name="btn_save_road">Save</string>
     <string name="btn_back_from_view_data">Back</string>
+    <string name="btn_road_name">Road Name</string>
+    <string name="tv_road_short_name">Short Name</string>
+    <string name="tv_road_long_name">Long Name</string>
+    <string name="btn_auto_road">Auto detect</string>
+    <string name="btn_manual_road">Manually edit</string>
+    <string name="btn_set_road_done">OK</string>
+    <string name="btn_start_record">Start Record</string>
+    <string name="btn_stop_record">Stop Record</string>
     <string-array name="speeds_array">
         <item>50km/h</item>
         <item>60km/h</item>

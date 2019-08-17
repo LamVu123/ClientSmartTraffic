@@ -27,12 +27,26 @@ public class MySocketFactory {
         }
     }
 
+    private Socket myBackUpSocket;
+    {
+        try {
+            myBackUpSocket = IO.socket(BuildConfig.SocketBackUpIp);
+            myBackUpSocket.connect();
+        } catch (URISyntaxException e) {
+            myBackUpSocket = null;
+        }
+    }
+
     public static void setInstance(MySocketFactory instance) {
         MySocketFactory.instance = instance;
     }
 
     public Socket getMySocket() {
         return mySocket;
+    }
+
+    public Socket getMyBackUpSocket() {
+        return myBackUpSocket;
     }
 
     public void setMySocket(Socket mySocket) {

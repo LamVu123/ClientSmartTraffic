@@ -17,6 +17,7 @@ import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.location.Location;
 import android.net.Uri;
+import android.os.Bundle;
 import android.os.Environment;
 import android.os.Process;
 import android.provider.Settings;
@@ -25,10 +26,11 @@ import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentManager;
 import android.support.v7.app.AppCompatActivity;
-import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.View;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
@@ -39,14 +41,11 @@ import android.widget.Toast;
 import com.duytry.smarttraffic.common.Common;
 import com.duytry.smarttraffic.common.MySocketFactory;
 import com.duytry.smarttraffic.fragment.MyDialogFragment;
-import com.duytry.smarttraffic.entity.MyLocation;
 import com.duytry.smarttraffic.fragment.ViewDataFragment;
+import com.duytry.smarttraffic.modules.AddressModule.AddressFinder;
+import com.duytry.smarttraffic.modules.AddressModule.AddressFinderListener;
 import com.duytry.smarttraffic.modules.RoadModule.SnapPointFinder;
 import com.duytry.smarttraffic.modules.RoadModule.SnapPointFinderListener;
-import com.github.mikephil.charting.charts.LineChart;
-import com.github.mikephil.charting.components.YAxis;
-import com.github.mikephil.charting.data.LineData;
-import com.github.mikephil.charting.data.LineDataSet;
 import com.github.nkzawa.socketio.client.Socket;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationCallback;
@@ -65,6 +64,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
@@ -72,52 +72,50 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
-import java.util.Queue;
+import java.util.Timer;
+import java.util.TimerTask;
 
 
-public class MainActivity extends AppCompatActivity implements SensorEventListener, SnapPointFinderListener {
-    private Queue dataExample;
+public class MainActivity extends AppCompatActivity implements SensorEventListener, SnapPointFinderListener, AddressFinderListener {
     private static final int REQUEST_PERMISSION_REQUEST_CODE = 1000;
-    private static final int INITIAL_REQUEST=1337;
-    private static final int NUM_OF_ENTRY = 1000;
+    private static final int INITIAL_REQUEST = 1337;
+    private static final int MAX_RESOLUTION_MANUAL = 1000;
+    private static final int MAX_TIME_AUTO_SAVE_DATA = 60000;
     private static final String TAG = "MainActivity";
+    private static final String MODE_AUTO = "0";
+    private static final String MODE_MANUAL = "1";
     private static final int MAP_REQUEST_CODE = 1999;
-    private EditText fileNameResult;
-    private String fileNameToLoad;
-    private String pathFileToLoad;
     private static final int CHOOSE_FILE_MESS_CODE = 02;
-    private int mVisibleXRangeMaximum = 600;
     private SensorManager sensorManager;
     private Sensor accelerometer;
     ViewDataFragment viewDataFragment;
-    private LineChart mChartX, mChartY, mChartZ;
     private MutableLiveData<Boolean> isRunning = new MutableLiveData<>();
-    private boolean onLoadFile = false;
-    private int idLoadFile = 0;
-    Intent myFileIntent;
-    private static ArrayList<MyLocation> locationData;
-    private static ArrayList<String> timeData;
+    private MutableLiveData<Boolean> isRecording = new MutableLiveData<>();
+    private static ArrayList<String> lineData = new ArrayList<>();
+    private static ArrayList<String> lineDataTemp = new ArrayList<>();
+//    private static int count = 0;
+    private static int fileCount = 0;
+    private static int fileCountNumber = 0;
+
 
     private static String dataDirectory;
 
-    private Button btnOpen, btnStop, btnResume, btnSave, btnFinish,btnManage;
-    private Button btnShockPoint, btnSpeedUp, btnBrakeDown, btnParking;
+    private Button btnOpen, btnStop, btnResume, btnSave, btnFinish, btnManage, btnRoadName;
+    private Button btnShockPoint, btnSpeedUp, btnBrakeDown, btnParking, btnStartRecord, btnStopRecord;
     private Spinner spinnerSpeed;
     private TextView textViewUserInfo;
 
-    private View.OnClickListener stopListener, openListener, resumeListener, saveListener;
-    private View.OnClickListener finishListener;
-    private View.OnClickListener saveShockPointListener, saveSpeedUpListener, saveBrakeDownListener, saveParkingListener;
     private SharedPreferences userInformation;
     SimpleDateFormat simpleDateFormat;
+    DecimalFormat df = new DecimalFormat("0.0000");
 
     private boolean mLocationPermissionGranted;
     private FusedLocationProviderClient mFusedLocationProviderClient;
     private Location mLastKnownLocation;
 
-//    Date startDate;
-
     private Socket mSocket = MySocketFactory.getInstance().getMySocket();
+    private Socket mSocket2 = MySocketFactory.getInstance().getMyBackUpSocket();
+    Timer autoRecordingTimer = new Timer();
 
     @Override
     protected void onCreate(final Bundle savedInstanceState) {
@@ -131,7 +129,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 Manifest.permission.ACCESS_FINE_LOCATION
         };
 
-        if(!hasPermissions(this, PERMISSIONS)){
+        if (!hasPermissions(this, PERMISSIONS)) {
             ActivityCompat.requestPermissions(this, PERMISSIONS, REQUEST_PERMISSION_REQUEST_CODE);
         }
 
@@ -161,14 +159,19 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         } else {
             accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION);
         }
-        if(accelerometer != null){
+        if (accelerometer != null) {
             isRunning.postValue(true);
             sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_GAME);
         }
 
-        simpleDateFormat = new SimpleDateFormat(Common.DATE_INPUT_FORMAT);
-        userInformation = getSharedPreferences(Common.PREFERENCES,MODE_PRIVATE);
+//        isRecording.postValue(false);
 
+        simpleDateFormat = new SimpleDateFormat(Common.DATE_INPUT_FORMAT);
+        userInformation = getSharedPreferences(Common.PREFERENCES, MODE_PRIVATE);
+
+//        count = 0;
+        fileCount = 0;
+        fileCountNumber = 0;
         //init layout
         initLayout();
 
@@ -179,18 +182,15 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         //init graph
 //        initChart();
 
-        locationData = new ArrayList<>();
-        timeData = new ArrayList<>();
-
 //        startDate = new Date();
     }
 
-    private void checkOldData(){
+    private void checkOldData() {
         final File fileDirectory = new File(dataDirectory);
         //check old data
-        if(fileDirectory != null && fileDirectory.exists()){
+        if (fileDirectory != null && fileDirectory.exists()) {
             final String[] oldDatas = fileDirectory.list();
-            if(oldDatas.length >= 1){
+            if (oldDatas.length >= 1) {
                 AlertDialog.Builder builder = new AlertDialog.Builder(this);
                 builder.setTitle(R.string.overwrite_data_warning);
                 builder.setMessage(R.string.overwrite_data_warning_message);
@@ -198,11 +198,11 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 builder.setPositiveButton(R.string.ok_button, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
-                        for ( String oldFileStr : oldDatas
+                        for (String oldFileStr : oldDatas
                         ) {
                             File oldFile = new File(fileDirectory.getAbsolutePath() + File.separator + oldFileStr);
                             boolean deleted = oldFile.delete();
-                            if(!deleted){
+                            if (!deleted) {
                                 Toast.makeText(MainActivity.this, "Delete file error", Toast.LENGTH_LONG).show();
                             }
                         }
@@ -222,78 +222,78 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         }
     }
 
-    private void sendFileToServer(String filePath){
+    private void sendFileToServer(String fileName, String mode) {
 
-        mSocket.emit("filename", filePath);
+        File file = new File(dataDirectory + File.separator + fileName);
         FileInputStream inputStream = null;
         try {
-            inputStream = new FileInputStream(dataDirectory + File.separator + filePath);
+            inputStream = new FileInputStream(file);
         } catch (FileNotFoundException e) {
             Log.d(TAG, "send file to server error");
             Toast.makeText(this, Common.OPEN_FILE_ERROR_MESSAGE, Toast.LENGTH_LONG).show();
             e.printStackTrace();
         }
-        StringBuilder data = new StringBuilder();
-        if(inputStream != null){
-            try (BufferedReader br = new BufferedReader(new InputStreamReader(inputStream))) {
-                String strCurrentLine;
-                while ((strCurrentLine = br.readLine()) != null) {
-                    data.append(strCurrentLine);
-                    data.append(System.lineSeparator());
+
+        if (inputStream != null) {
+            byte[] data = new byte[(int) file.length()];
+            try {
+                inputStream.read(data);
+                inputStream.close();
+                if(TextUtils.equals(mode, Common.AUTO_ACTION)){
+                    mSocket2.emit("filename2", fileName);
+                    mSocket2.emit("data2", new String(data, "UTF-8"));
+                } else {
+                    mSocket.emit("filename", fileName);
+                    mSocket.emit("data", new String(data, "UTF-8"));
                 }
+
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
-        mSocket.emit("data", data.toString());
-
     }
 
     /**
      * Init layout
      */
-    private void initLayout(){
+    private void initLayout() {
         //stop button
         btnStop = (Button) findViewById(R.id.stop);
-        stopListener = new View.OnClickListener() {
+        btnStop.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 stopSensor();
             }
-        };
-        btnStop.setOnClickListener(stopListener);
+        });
 
         //resume button
         btnResume = (Button) findViewById(R.id.resume);
-        resumeListener = new View.OnClickListener() {
+        btnResume.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 resumeSensor();
             }
-        };
-        btnResume.setOnClickListener(resumeListener);
+        });
 
         //save button
         btnSave = (Button) findViewById(R.id.btn_push_data);
-        saveListener = new View.OnClickListener() {
+        btnSave.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                pushDataToServer();
+                pushDataToServer2();
             }
-        };
-        btnSave.setOnClickListener(saveListener);
+        });
 
         //open button
         btnOpen = (Button) findViewById(R.id.open);
-        openListener = new View.OnClickListener() {
+        btnOpen.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 Log.d(TAG, "Button Open clicked");
                 stopSensor();
                 loadData();
             }
-        };
-        btnOpen.setOnClickListener(openListener);
+        });
 
         //dropdown select speed
         spinnerSpeed = (Spinner) findViewById(R.id.spinner_speed);
@@ -303,60 +303,88 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
         //shock point button
         btnShockPoint = (Button) findViewById(R.id.btn_shock_point);
-        saveShockPointListener = new View.OnClickListener() {
+        btnShockPoint.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 Log.d(TAG, "Button Shock Point clicked");
-                String path = saveData(Common.SHOCK_POINT_ACTION);
-                beginSnapPoint(path);
-
+                String path = saveData(Common.SHOCK_POINT_ACTION, MODE_MANUAL);
+//                beginSnapPoint(path);
             }
-        };
-        btnShockPoint.setOnClickListener(saveShockPointListener);
+        });
 
         //speed up button
         btnSpeedUp = (Button) findViewById(R.id.btn_speed_up);
-        saveSpeedUpListener = new View.OnClickListener() {
+        btnSpeedUp.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 Log.d(TAG, "Button Speed Up clicked");
-                saveData(Common.SPEED_UP_ACTION);
+                saveData(Common.SPEED_UP_ACTION, MODE_MANUAL);
             }
-        };
-        btnSpeedUp.setOnClickListener(saveSpeedUpListener);
+        });
 
         //brake down button
         btnBrakeDown = (Button) findViewById(R.id.btn_brake_down);
-        saveBrakeDownListener = new View.OnClickListener() {
+        btnBrakeDown.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 Log.d(TAG, "Button Brake down clicked");
-                saveData(Common.BRAKE_DOWN_ACTION);
+                saveData(Common.BRAKE_DOWN_ACTION, MODE_MANUAL);
             }
-        };
-        btnBrakeDown.setOnClickListener(saveBrakeDownListener);
+        });
 
         //parking button
         btnParking = (Button) findViewById(R.id.btn_parking);
-        saveParkingListener = new View.OnClickListener() {
+        btnParking.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 Log.d(TAG, "Button Parking clicked");
-                saveData(Common.PARKING_ACTION);
+                saveData(Common.PARKING_ACTION, MODE_MANUAL);
             }
-        };
-        btnParking.setOnClickListener(saveParkingListener);
+        });
 
         //finish button
         btnFinish = (Button) findViewById(R.id.btn_finish);
-        finishListener = new View.OnClickListener() {
+        btnFinish.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 Log.d(TAG, "Button Finish clicked");
                 MainActivity.this.finish();
             }
-        };
-        btnFinish.setOnClickListener(finishListener);
+        });
+
+        btnStartRecord = (Button) findViewById(R.id.btn_start_record);
+        btnStartRecord.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                isRecording.postValue(true);
+            }
+        });
+
+        btnStopRecord = (Button) findViewById(R.id.btn_stop_record);
+        btnStopRecord.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                isRecording.postValue(false);
+            }
+        });
+
+        isRecording.observe(this, new Observer<Boolean>() {
+            @Override
+            public void onChanged(@Nullable Boolean isRecording) {
+                if (isRecording == null) {
+                    return;
+                }
+                if (isRecording) {
+                    startAutoRecording();
+                    btnStartRecord.setVisibility(View.GONE);
+                    btnStopRecord.setVisibility(View.VISIBLE);
+                } else {
+                    stopAutoRecording();
+                    btnStartRecord.setVisibility(View.VISIBLE);
+                    btnStopRecord.setVisibility(View.GONE);
+                }
+            }
+        });
 
         //manage button
         btnManage = (Button) findViewById(R.id.btn_manage);
@@ -364,6 +392,14 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             @Override
             public void onClick(View v) {
                 goToMapsActivity();
+            }
+        });
+
+        btnRoadName = (Button) findViewById(R.id.btn_road_name);
+        btnRoadName.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showRoadName();
             }
         });
 
@@ -384,6 +420,12 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         });
 
         //user info
+        updateUserInfo();
+        viewDataFragment = (ViewDataFragment) getSupportFragmentManager().findFragmentById(R.id.view_data_fragment);
+        viewDataFragment.initChart();
+    }
+
+    private void updateUserInfo() {
         String name = userInformation.getString(Common.NAME_PREFERENCES_KEY, Common.UNDEFINED);
         String road = userInformation.getString(Common.ROAD_PREFERENCES_KEY, Common.UNDEFINED);
         StringBuilder userInfo = new StringBuilder();
@@ -395,19 +437,14 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
         textViewUserInfo = (TextView) findViewById(R.id.textView_user_info);
         textViewUserInfo.setText(userInfo.toString());
-        viewDataFragment = (ViewDataFragment) getSupportFragmentManager().findFragmentById(R.id.view_data_fragment);
-        viewDataFragment.initChart();
-        mChartX = viewDataFragment.getmChartX();
-        mChartY = viewDataFragment.getmChartY();
-        mChartZ = viewDataFragment.getmChartZ();
     }
 
-    private void stopSensor(){
+    private void stopSensor() {
         sensorManager.unregisterListener(MainActivity.this);
         isRunning.postValue(false);
     }
 
-    private void resumeSensor(){
+    private void resumeSensor() {
         sensorManager.registerListener(MainActivity.this, accelerometer, SensorManager.SENSOR_DELAY_GAME);
         isRunning.postValue(true);
     }
@@ -431,66 +468,128 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         viewDataFragment.addEndtry(event, 2);
     }
 
-    private void addLocation(){
-        if (locationData == null) {
-            locationData = new ArrayList<>();
+    private void addLine(SensorEvent event) {
+        if (lineData == null) {
+            lineData = new ArrayList<>();
         }
-        if(mLastKnownLocation == null){
-            locationData.add(new MyLocation(0, 0));
+        float xValue = event.values[0];
+        String xStrValue = df.format(xValue);
+        float yValue = event.values[1];
+        String yStrValue = df.format(yValue);
+        float zValue = event.values[2];
+        String zStrValue = df.format(zValue);
+
+        String latValue;
+        String lngValue;
+        if(mLastKnownLocation != null){
+            latValue = String.valueOf((double) Math.round(mLastKnownLocation.getLatitude() * 100000) / 100000);
+            lngValue = String.valueOf((double) Math.round(mLastKnownLocation.getLongitude() * 100000) / 100000);
         } else {
-            locationData.add(new MyLocation(mLastKnownLocation.getLatitude(), mLastKnownLocation.getLongitude()));
+            latValue = String.valueOf(0);
+            lngValue = String.valueOf(0);
         }
 
-    }
-
-    private void addTime(){
-        if (timeData == null) {
-            timeData = new ArrayList<>();
-        }
         Date date = new Date();
-        timeData.add(simpleDateFormat.format(date));
+        String timeValue = simpleDateFormat.format(date);
+
+        StringBuilder lineBuilder = new StringBuilder();
+        lineBuilder.append(xStrValue);
+        lineBuilder.append(Common.SPACE_CHARACTER);
+        lineBuilder.append(yStrValue);
+        lineBuilder.append(Common.SPACE_CHARACTER);
+        lineBuilder.append(zStrValue);
+        lineBuilder.append(Common.SPACE_CHARACTER);
+        lineBuilder.append(latValue);
+        lineBuilder.append(Common.SPACE_CHARACTER);
+        lineBuilder.append(lngValue);
+        lineBuilder.append(Common.SPACE_CHARACTER);
+        lineBuilder.append(timeValue);
+//        lineBuilder.append(Common.SPACE_CHARACTER);
+//        lineBuilder.append(count++);
+
+        synchronized (lineData) {
+            lineData.add(lineBuilder.toString());
+        }
+
     }
 
-    private LineDataSet createSet(int color){
-        LineDataSet set = new LineDataSet(null, "Dynamic Data");
-        set.setAxisDependency(YAxis.AxisDependency.LEFT);
-        set.setLineWidth(3f);
-        set.setColor(color);
-        set.setHighlightEnabled(false);
-        set.setDrawValues(false);
-        set.setDrawCircles(false);
-        set.setMode(LineDataSet.Mode.CUBIC_BEZIER);
-        set.setCubicIntensity(0.2f);
-        return set;
+//    private void addLocation(){
+//        if (locationData == null) {
+//            locationData = new ArrayList<>();
+//        }
+//        if(mLastKnownLocation == null){
+//            locationData.add(new MyLocation(0, 0));
+//        } else {
+//            locationData.add(new MyLocation(mLastKnownLocation.getLatitude(), mLastKnownLocation.getLongitude()));
+//        }
+//
+//    }
+//
+//    private void addTime(){
+//        if (timeData == null) {
+//            timeData = new ArrayList<>();
+//        }
+//        Date date = new Date();
+//        timeData.add(simpleDateFormat.format(date));
+//    }
+
+    private void showMessageSendFileSuccess(){
+        FragmentManager fragmentManager = getSupportFragmentManager();
+        MyDialogFragment dialogFragment = new MyDialogFragment();
+        dialogFragment.setTittle(getString(R.string.push_data_success_tittle));
+        dialogFragment.setMessage(getString(R.string.push_data_success_message));
+        dialogFragment.show(fragmentManager, "Save data success");
     }
 
     private void pushDataToServer() {
-        if(!mSocket.connected()){
+        if (!mSocket.connected()) {
             mSocket.connect();
         }
         String road = userInformation.getString(Common.ROAD_PREFERENCES_KEY, Common.UNDEFINED);
         mSocket.emit("road", road);
         File folder = new File(dataDirectory);
         String[] files = folder.list();
-        for ( String file : files ) {
-            sendFileToServer(file);
+        for (String file : files) {
+            String[] fileNameStrArr = file.split(Common.UNDERLINED_CHARACTER);
+            if(fileNameStrArr.length > 2 && TextUtils.equals(fileNameStrArr[1], Common.SHOCK_POINT_ACTION)){
+                sendFileToServer(file, fileNameStrArr[1]);
+            }
         }
         mSocket.emit("end_send_file", "true");
-        FragmentManager fragmentManager = getSupportFragmentManager();
-        MyDialogFragment dialogFragment = new MyDialogFragment();
-        dialogFragment.setTittle(getString(R.string.push_data_success_tittle));
-        dialogFragment.setMessage(getString(R.string.push_data_success_message));
-        dialogFragment.show(fragmentManager, "Save data success");
+        showMessageSendFileSuccess();
+    }
 
+    private void pushDataToServer2() {
+        if (!mSocket2.connected()) {
+            mSocket2.connect();
+        }
+        mSocket2.emit("startSent", "startSent");
+        String road = userInformation.getString(Common.ROAD_PREFERENCES_KEY, Common.UNDEFINED);
+        mSocket2.emit("roadname2", road);
+        File folder = new File(dataDirectory);
+        String[] files = folder.list();
+
+        for (String file : files) {
+            String[] fileNameStrArr = file.split(Common.UNDERLINED_CHARACTER);
+            fileCountNumber = files.length;
+            fileCount = 0;
+            if(fileNameStrArr.length > 2 ){
+                beginSnapPoint(file, fileNameStrArr[1]);
+//                sendFileToServer(file, fileNameStrArr[1]);
+            }
+        }
+//        mSocket2.emit("endSent", "true");
+//        showMessageSendFileSuccess();
     }
 
     /**
      * Create file name to save data
+     *
      * @param action
      * @param speed
      * @return filename
      */
-    private String makeFileName(String action, String speed){
+    private String makeFileName(String action, String speed) {
         String name = userInformation.getString(Common.NAME_PREFERENCES_KEY, Common.UNDEFINED);
         Date currentTime = Calendar.getInstance().getTime();
         String time = simpleDateFormat.format(currentTime);
@@ -510,13 +609,14 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     /**
      * remove slash in speed
+     *
      * @param input
      * @return speed without slash
      */
-    private String removeSlash(String input){
-        String[]array = input.split("/");
+    private String removeSlash(String input) {
+        String[] array = input.split("/");
         StringBuilder output = new StringBuilder();
-        for(String item : array){
+        for (String item : array) {
             output.append(item);
         }
         return output.toString();
@@ -525,7 +625,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     /**
      * Create folder to save data
      */
-    private String makeDirectory(){
+    private String makeDirectory() {
         String road = userInformation.getString(Common.ROAD_PREFERENCES_KEY, Common.UNDEFINED);
         StringBuilder directory = new StringBuilder();
         directory.append(Environment.getExternalStorageDirectory().getAbsolutePath());
@@ -546,20 +646,21 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     /**
      * save data to internal storage
+     *
      * @param action
      * @return
      */
-    private String saveData(String action){
+    private String saveData(String action, String saveMode) {
 //        Date clickTime = new Date();
 //        long time = clickTime.getTime() - startDate.getTime();
         String speed = spinnerSpeed.getSelectedItem().toString();
-        if(TextUtils.isEmpty(speed)){
+        if (TextUtils.isEmpty(speed)) {
             speed = Common.UNDEFINED;
         }
         String fileName = makeFileName(action, speed);
         Log.d(TAG, "Saving data to filename: " + fileName);
 
-        if(TextUtils.isEmpty(dataDirectory)){
+        if (TextUtils.isEmpty(dataDirectory)) {
             this.dataDirectory = makeDirectory();
         }
         File file = new File(dataDirectory, fileName);
@@ -573,60 +674,47 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         }
 
         try (BufferedWriter bw = new BufferedWriter(new FileWriter(file))) {
-            LineData xData = mChartX.getData();
-            LineData yData = mChartY.getData();
-            LineData zData = mChartZ.getData();
-            int minEntryCount = Math.min(xData.getEntryCount(), yData.getEntryCount());
-            minEntryCount = Math.min(minEntryCount, zData.getEntryCount());
-            int minCount = Math.min(minEntryCount, NUM_OF_ENTRY);
-            DecimalFormat df = new DecimalFormat("0.0000");
+            int resolution = 0;
+            synchronized (lineData) {
+                if(TextUtils.equals(saveMode, MODE_AUTO)){
+                    resolution = lineData.size();
+                    bw.write("" + resolution);
+                    for (int i = lineData.size() - resolution; i < lineData.size(); i++) {
+                        bw.newLine();
+                        bw.write(saveMode);
+                        bw.write(Common.SPACE_CHARACTER);
+                        bw.write(lineData.get(i));
+                    }
+                } else {
+                    resolution = Math.min(lineData.size() + lineDataTemp.size(), MAX_RESOLUTION_MANUAL);
+                    bw.write("" + resolution);
+                    int count = resolution;
+                    if(resolution > lineData.size()){
+                        for (int i = lineDataTemp.size() - (resolution - lineData.size()); i < lineDataTemp.size(); i++) {
+                            bw.newLine();
+                            bw.write(saveMode);
+                            bw.write(Common.SPACE_CHARACTER);
+                            bw.write(lineDataTemp.get(i));
+                        }
+                        count = lineData.size();
+                    }
+                    for (int i = lineData.size() - count; i < lineData.size(); i++) {
+                        bw.newLine();
+                        bw.write(saveMode);
+                        bw.write(Common.SPACE_CHARACTER);
+                        bw.write(lineData.get(i));
+                    }
+                }
 
-            //first row print number of point
-            bw.write(String.valueOf(minCount));
+                if(TextUtils.equals(saveMode, MODE_AUTO)){
+                    lineDataTemp = (ArrayList<String>) lineData.clone();
+                    lineData.clear();
+                }
 
-            String saveMode = "1";
-
-            for (int i = xData.getEntryCount() - minCount; i < xData.getEntryCount() ; i++) {
-                float xValue = (float) (xData.getDataSetByIndex(0).getEntryForIndex(i).getY() - 5);
-                String xStrValue = df.format(xValue);
-                float yValue = (float) (yData.getDataSetByIndex(0).getEntryForIndex(i).getY() - 5);
-                String yStrValue = df.format(yValue);
-                float zValue = (float) (zData.getDataSetByIndex(0).getEntryForIndex(i).getY() - 5);
-                String zStrValue = df.format(zValue);
-
-                String strLatitudeValue = String.valueOf(locationData.get(i).getLatitude());
-                String strLongitudeValue = String.valueOf(locationData.get(i).getLongitude());
-
-                String strTime = timeData.get(i);
-
-                bw.newLine();
-                bw.write(saveMode);
-                bw.write(Common.SPACE_CHARACTER);
-
-                bw.write(xStrValue.replace(",", "."));
-                bw.write(Common.SPACE_CHARACTER);
-
-                bw.write(yStrValue.replace(",", "."));
-                bw.write(Common.SPACE_CHARACTER);
-
-                bw.write(zStrValue.replace(",", "."));
-                bw.write(Common.SPACE_CHARACTER);
-
-                bw.write(strLatitudeValue);
-                bw.write(Common.SPACE_CHARACTER);
-
-                bw.write(strLongitudeValue);
-                bw.write(Common.SPACE_CHARACTER);
-
-                bw.write(strTime);
-                bw.write(Common.SPACE_CHARACTER);
-
-                bw.write(Common.SEMICOLON_CHARACTER);
             }
-
             Log.d(TAG, "Saved data to filename: " + fileName);
 //            Toast.makeText(this, "Saved with " + minCount + " " + time + " //" + time/minCount, Toast.LENGTH_LONG).show();
-            Toast.makeText(this, "Saved with resolution " + minCount, Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "Saved with resolution " + resolution, Toast.LENGTH_LONG).show();
 
         } catch (IOException e) {
             Toast.makeText(this, Common.ERROR_MESSAGE, Toast.LENGTH_LONG).show();
@@ -635,7 +723,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         String path = null;
         try {
             path = file.getPath();
-        } catch (NullPointerException e){
+        } catch (NullPointerException e) {
             e.printStackTrace();
         }
         return path;
@@ -653,7 +741,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 }
                 break;
             case MAP_REQUEST_CODE:
-                if(resultCode == Common.VIEW_DATA_RESULT_CODE){
+                if (resultCode == Common.VIEW_DATA_RESULT_CODE) {
                     String data = intentData.getStringExtra("data");
                     stopSensor();
                     viewDataFragment.viewDataFromString(data);
@@ -665,11 +753,11 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         }
     }
 
-    private void openFile(Uri uri){
+    private void openFile(Uri uri) {
         ContentResolver res = this.getContentResolver();
         try {
             InputStream inputStream = res.openInputStream(uri);
-            if(inputStream != null){
+            if (inputStream != null) {
                 try (BufferedReader br = new BufferedReader(new InputStreamReader(inputStream))) {
                     StringBuilder dataStr = new StringBuilder();
                     String strCurrentLine = "";
@@ -692,42 +780,46 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
 
     @Override
-    public final void onAccuracyChanged (Sensor sensor,int accuracy){
+    public final void onAccuracyChanged(Sensor sensor, int accuracy) {
 
     }
 
     @Override
-    public final void onSensorChanged (SensorEvent sensorEvent){
-        if(isRunning.getValue() != null && isRunning.getValue().booleanValue() == true){
+    public final void onSensorChanged(SensorEvent sensorEvent) {
+        if (isRunning.getValue() != null && isRunning.getValue().booleanValue() == true) {
+            //display graph
             addEndtryX(sensorEvent);
             addEndtryY(sensorEvent);
             addEndtryZ(sensorEvent);
-            addLocation();
-            addTime();
+
+            //collect data
+            addLine(sensorEvent);
+//            addLocation();
+//            addTime();
         }
     }
 
     @Override
-    protected void onPause () {
+    protected void onPause() {
         super.onPause();
     }
 
 
     @Override
-    protected void onDestroy () {
+    protected void onDestroy() {
         stopSensor();
         super.onDestroy();
 
     }
 
     @Override
-    protected void onResume () {
+    protected void onResume() {
         super.onResume();
     }
 
     @Override
-    public void onRequestPermissionsResult ( int requestCode, @NonNull String[] permissions,
-    @NonNull int[] grantResults){
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
+                                           @NonNull int[] grantResults) {
         switch (requestCode) {
             case REQUEST_PERMISSION_REQUEST_CODE:
                 if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED
@@ -739,26 +831,28 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                     finish();
                 }
                 break;
-            default: break;
+            default:
+                break;
         }
     }
 
     /**
      * check permissions
+     *
      * @param context
      * @param permissions
      * @return
      */
-        public static boolean hasPermissions(Context context, String... permissions) {
-            if (context != null && permissions != null) {
-                for (String permission : permissions) {
-                    if (ActivityCompat.checkSelfPermission(context, permission) != PackageManager.PERMISSION_GRANTED) {
-                        return false;
-                    }
+    public static boolean hasPermissions(Context context, String... permissions) {
+        if (context != null && permissions != null) {
+            for (String permission : permissions) {
+                if (ActivityCompat.checkSelfPermission(context, permission) != PackageManager.PERMISSION_GRANTED) {
+                    return false;
                 }
             }
-            return true;
         }
+        return true;
+    }
 
     /**
      * Check gps, if turn off => turn on request.
@@ -818,78 +912,243 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             for (Location location : locationResult.getLocations()) {
                 mLastKnownLocation = location;
             }
-        };
+        }
+
+        ;
     };
 
     private void stopLocationUpdates() {
         mFusedLocationProviderClient.removeLocationUpdates(locationCallback);
     }
 
-    private void goToMapsActivity(){
+    private void goToMapsActivity() {
         Intent intent = new Intent(getApplicationContext(), MapsActivity.class);
         startActivityForResult(intent, MAP_REQUEST_CODE);
     }
 
-    private void beginSnapPoint(String path){
-        File file = new File(path);
-        if(file.exists()) {
+    private void beginSnapPoint(String fileName, String mode) {
+        File file = new File(dataDirectory + File.separator + fileName);
+
+        if (file.exists()) {
             try (BufferedReader br = new BufferedReader(new FileReader(file))) {
                 StringBuilder dataStr = new StringBuilder();
                 String strCurrentLine = br.readLine();
-                double oldLatitude = 0;
-                double oldLongitude = 0;
+                dataStr.append(strCurrentLine);
+                dataStr.append(System.lineSeparator());
+                double oldLatitude = -1;
+                double oldLongitude = -1;
                 List<LatLng> points = new ArrayList<>();
-                String lastLine = "";
                 while ((strCurrentLine = br.readLine()) != null) {
+                    dataStr.append(strCurrentLine);
+                    dataStr.append(System.lineSeparator());
                     String[] arrValues = strCurrentLine.split(Common.SPACE_CHARACTER);
                     double latitude = Double.valueOf(arrValues[4]);
                     double longitude = Double.valueOf(arrValues[5]);
-                    if(latitude == oldLatitude && oldLongitude == longitude){
+                    if (latitude == oldLatitude && oldLongitude == longitude) {
                         continue;
                     }
                     LatLng point = new LatLng(latitude, longitude);
                     points.add(point);
                     oldLatitude = latitude;
                     oldLongitude = longitude;
-                    lastLine = strCurrentLine;
                 }
-                if(!TextUtils.isEmpty(lastLine)){
-                    onSnapPointFinderStart(points, path, lastLine);
+                if (!TextUtils.isEmpty(dataStr)) {
+                    onSnapPointFinderStart(points, fileName, dataStr.toString(), mode);
                 }
             } catch (IOException e) {
                 Toast.makeText(this, Common.ERROR_MESSAGE, Toast.LENGTH_LONG).show();
                 e.printStackTrace();
             }
         }
+
+//        FileInputStream inputStream = null;
+//        try {
+//            inputStream = new FileInputStream(file);
+//        } catch (FileNotFoundException e) {
+//            Log.d(TAG, "send file to server error");
+//            Toast.makeText(this, Common.OPEN_FILE_ERROR_MESSAGE, Toast.LENGTH_LONG).show();
+//            e.printStackTrace();
+//        }
+//
+//        if (inputStream != null) {
+//
+//            byte[] data = new byte[(int) file.length()];
+//            try {
+//                inputStream.read(data);
+//                inputStream.close();
+//                if(TextUtils.equals(mode, Common.AUTO_ACTION)){
+//                    mSocket2.emit("filename2", fileName);
+//                    mSocket2.emit("data2", new String(data, "UTF-8"));
+//                } else {
+//                    mSocket.emit("filename", fileName);
+//                    mSocket.emit("data", new String(data, "UTF-8"));
+//                }
+//
+//            } catch (IOException e) {
+//                e.printStackTrace();
+//            }
+//        }
+
     }
 
     @Override
-    public void onSnapPointFinderStart(List<LatLng> listInputPoints, String filePath, String lastLine) {
+    public void onSnapPointFinderStart(List<LatLng> listInputPoints, String fileName, String data, String mode) {
         try {
-            new SnapPointFinder(this, listInputPoints, filePath, lastLine).execute();
+            new SnapPointFinder(this, listInputPoints, fileName, data, mode).execute();
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
         }
     }
 
     @Override
-    public void onSnapPointFinderSuccess(List<LatLng> listOutputPoints, String filePath, String lastLine) {
-        File file = new File(filePath);
-        try (BufferedWriter bw = new BufferedWriter(new FileWriter(file, true))) {
-            String[] arrValues = lastLine.split(Common.SPACE_CHARACTER);
-            StringBuilder newLine = new StringBuilder();
-            arrValues[4] = String.valueOf(listOutputPoints.get(listOutputPoints.size() - 1).latitude);
-            arrValues[5] = String.valueOf(listOutputPoints.get(listOutputPoints.size() - 1).longitude);
-            for (int i = 0; i < arrValues.length - 1; i++) {
-                newLine.append(arrValues[i]);
-                newLine.append(Common.SPACE_CHARACTER);
+    public void onSnapPointFinderSuccess(List<LatLng> listOutputPoints, String fileName, String data, String mode) {
+        File file = new File(dataDirectory + File.separator + fileName);
+        StringBuilder dataBuider = new StringBuilder(data);
+        String[] dataLines = data.split(System.lineSeparator());
+        int count = -1;
+        double oldLatitude = -1;
+        double oldLongitude = -1;
+        for (int i = 1; i < dataLines.length; i++) {
+            String[] arrValues = dataLines[i].split(Common.SPACE_CHARACTER);
+            double latitude = Double.valueOf(arrValues[4]);
+            double longitude = Double.valueOf(arrValues[5]);
+            if (latitude == oldLatitude && oldLongitude == longitude) {
+            } else {
+                oldLatitude = latitude;
+                oldLongitude = longitude;
+                count++;
             }
-            newLine.append(arrValues[arrValues.length - 1]);
-            bw.newLine();
-            bw.append(newLine.toString());
+            if(count < listOutputPoints.size() - 1){
+                dataLines[i].replace(arrValues[4], String.valueOf((double) Math.round(listOutputPoints.get(count).latitude * 100000) / 100000));
+                dataLines[i].replace(arrValues[5], String.valueOf((double) Math.round(listOutputPoints.get(count).longitude * 100000) / 100000));
+            }
+        }
+        try (BufferedWriter bw = new BufferedWriter(new FileWriter(file, false))) {
+            dataBuider.append(dataLines[0]);
+            bw.write(dataLines[0]);
+            for (int i = 1; i < dataLines.length; i++) {
+                bw.newLine();
+                dataBuider.append(System.lineSeparator());
+                bw.append(dataLines[i].toString());
+                dataBuider.append(dataLines[i].toString());
+            }
+            if(TextUtils.equals(mode, Common.AUTO_ACTION)){
+                mSocket2.emit("filename2", fileName);
+                mSocket2.emit("data2", dataBuider.toString());
+            } else {
+                mSocket.emit("filename", fileName);
+                mSocket.emit("data", dataBuider.toString());
+            }
+            this.fileCount++;
+            if(this.fileCount == this.fileCountNumber){
+                if(TextUtils.equals(mode, Common.AUTO_ACTION)){
+                    mSocket2.emit("endSent", "true");
+                } else {
+                    mSocket.emit("end_send_file", "true");
+
+                }
+                showMessageSendFileSuccess();
+            }
         } catch (IOException | ArrayIndexOutOfBoundsException e) {
             Toast.makeText(this, Common.ERROR_MESSAGE, Toast.LENGTH_LONG).show();
             e.printStackTrace();
         }
+    }
+
+    private void showRoadName() {
+        AlertDialog dialogRoadInfo = null;
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        LayoutInflater inflater = this.getLayoutInflater();
+        final View roadInfoView = inflater.inflate(R.layout.display_get_road_information, null);
+        final EditText shortNameET = (EditText) roadInfoView.findViewById(R.id.editText_short_name);
+        final EditText longNameET = (EditText) roadInfoView.findViewById(R.id.editText_long_name);
+        autoDetectRoadName(shortNameET, longNameET);
+        Button autoBtn = (Button) roadInfoView.findViewById(R.id.btn_auto_road);
+        Button manualBtn = (Button) roadInfoView.findViewById(R.id.btn_manual_road);
+        Button okBtn = (Button) roadInfoView.findViewById(R.id.btn_set_road_done);
+
+        autoBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                autoDetectRoadName(shortNameET, longNameET);
+            }
+        });
+
+        manualBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                shortNameET.setEnabled(true);
+                longNameET.setEnabled(true);
+                shortNameET.requestFocus();
+                InputMethodManager imm = (InputMethodManager)
+                        getSystemService(Context.INPUT_METHOD_SERVICE);
+//                imm.showSoftInput(roadInfoView, InputMethodManager.SHOW_IMPLICIT);
+                imm.toggleSoftInput(InputMethodManager.SHOW_FORCED, 0);
+
+            }
+        });
+
+        builder.setView(roadInfoView);
+        dialogRoadInfo = builder.create();
+        dialogRoadInfo.show();
+
+        final AlertDialog finalDialogRoadInfo = dialogRoadInfo;
+        okBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                SharedPreferences.Editor prefEditor = userInformation.edit();
+                prefEditor.putString(Common.ROAD_PREFERENCES_KEY, shortNameET.getText().toString());
+                prefEditor.commit();
+                finalDialogRoadInfo.dismiss();
+                updateUserInfo();
+            }
+        });
+    }
+
+    private void autoDetectRoadName(EditText shortName, EditText longName) {
+        if (mLastKnownLocation != null) {
+            String mLatLng = String.valueOf(mLastKnownLocation.getLatitude()) + ", " + mLastKnownLocation.getLongitude();
+            onAddressFinderStart(mLatLng, shortName, longName);
+        }
+        shortName.setEnabled(false);
+        longName.setEnabled(false);
+    }
+
+    @Override
+    public void onAddressFinderStart(String latlng, EditText shortName, EditText longName) {
+        try {
+            new AddressFinder(latlng, this, shortName, longName).execute();
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void onAddressFinderSuccess(String currentLongNameRoad, String currentShortNameRoad, String address, EditText shortName, EditText longName) {
+        shortName.setText(currentShortNameRoad);
+        longName.setText(currentLongNameRoad);
+    }
+
+    private void startAutoRecording(){
+        synchronized (lineData){
+            lineDataTemp = (ArrayList<String>) lineData.clone();
+            lineData.clear();
+        }
+        //once a minute
+        autoRecordingTimer.schedule(new TimerTask() {
+            public void run() {
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        saveData(Common.AUTO_ACTION, MODE_AUTO);
+                    }
+                });
+            }
+        }, MAX_TIME_AUTO_SAVE_DATA, MAX_TIME_AUTO_SAVE_DATA);
+    }
+
+    private void stopAutoRecording(){
+        autoRecordingTimer.cancel();
+        saveData(Common.AUTO_ACTION, MODE_AUTO);
     }
 }

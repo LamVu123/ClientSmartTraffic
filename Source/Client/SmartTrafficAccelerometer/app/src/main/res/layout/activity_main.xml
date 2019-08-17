@@ -46,6 +46,12 @@
 
 
             <Button
+                android:id="@+id/btn_road_name"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/btn_road_name" />
+
+            <Button
                 android:id="@+id/btn_finish"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -71,21 +77,39 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="@string/btn_speed_up" />
+                android:text="@string/btn_speed_up"
+                android:visibility="gone" />
 
             <Button
                 android:id="@+id/btn_brake_down"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="@string/btn_brake_down" />
+                android:text="@string/btn_brake_down"
+                android:visibility="gone" />
 
             <Button
                 android:id="@+id/btn_parking"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="@string/btn_parking" />
+                android:text="@string/btn_parking"
+                android:visibility="gone" />
+
+            <Button
+                android:id="@+id/btn_start_record"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/btn_start_record" />
+
+            <Button
+                android:id="@+id/btn_stop_record"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/btn_stop_record"
+                android:visibility="gone" />
         </LinearLayout>
 
         <LinearLayout

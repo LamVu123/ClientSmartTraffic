@@ -13,6 +13,7 @@ android {
     buildTypes {
         debug {
             buildConfigField 'String', "SocketIp", server_ip_port
+            buildConfigField 'String', "SocketBackUpIp", server_back_up_ip_port
         }
         release {
             minifyEnabled false

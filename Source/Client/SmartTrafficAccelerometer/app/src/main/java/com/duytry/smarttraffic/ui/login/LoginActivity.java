@@ -21,7 +21,7 @@ import android.widget.EditText;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
-import com.duytry.smarttraffic.InformationActivity;
+import com.duytry.smarttraffic.MainActivity;
 import com.duytry.smarttraffic.common.MySocketFactory;
 import com.duytry.smarttraffic.R;
 
@@ -212,7 +212,7 @@ public class LoginActivity extends AppCompatActivity {
         if(mSocket.hasListeners(LOGIN_RESULT_EVENT_SOCKET)){
             mSocket.off(LOGIN_RESULT_EVENT_SOCKET);
         }
-        Intent intent = new Intent(getApplicationContext(), InformationActivity.class);
+        Intent intent = new Intent(getApplicationContext(), MainActivity.class);
         startActivityForResult(intent, 1);
     }
 

@@ -26,17 +26,19 @@ public class SnapPointFinder {
     private SnapPointFinderListener listener;
     private List<LatLng> listInputPoints = new ArrayList<>();
     private String filePath;
-    private String lastLine;
+    private String dataStr;
+    private String mode;
 
-    public SnapPointFinder(SnapPointFinderListener listener, List<LatLng> listInputPoints, String filePath, String lastLine) {
+    public SnapPointFinder(SnapPointFinderListener listener, List<LatLng> listInputPoints, String filePath, String data, String mode) {
         this.listener = listener;
         this.listInputPoints = listInputPoints;
         this.filePath = filePath;
-        this.lastLine = lastLine;
+        this.dataStr = data;
+        this.mode = mode;
     }
 
     //create url with Snap point road
-    private String createUrl() throws UnsupportedEncodingException {
+    private String createUrl(){
         String points = "";
         if(!listInputPoints.isEmpty()) {
             for (LatLng item:listInputPoints) {
@@ -104,7 +106,7 @@ public class SnapPointFinder {
                 double lng = Double.parseDouble(jLocation.getString("longitude"));
                 listOutputPoint.add(new LatLng(lat,lng));
             }
-            listener.onSnapPointFinderSuccess(listOutputPoint, filePath, lastLine);
+            listener.onSnapPointFinderSuccess(listOutputPoint, filePath, dataStr, mode);
         }
     }
 

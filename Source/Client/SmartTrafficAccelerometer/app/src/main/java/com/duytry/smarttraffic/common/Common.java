@@ -13,6 +13,7 @@ public final class Common {
     public static final String SPEED_UP_ACTION = "speedUp";
     public static final String BRAKE_DOWN_ACTION = "brakeDown";
     public static final String PARKING_ACTION = "parking";
+    public static final String AUTO_ACTION = "auto";
 
     public static final String UNDERLINED_CHARACTER = "_";
     public static final String SLASH_CHARACTER = "/";

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:id="@+id/menu_logout"
+        android:icon="@drawable/ic_logout"
+        android:title="@string/menu_item_logout"/>
+    <item android:id="@+id/menu_open_file"
+        android:icon="@drawable/ic_open_file"
+        android:title="@string/menu_item_open_file" />
+    <item android:id="@+id/menu_save_to_server"
+        android:icon="@drawable/ic_upload"
+        android:title="@string/menu_item_save_to_server" />
+    <item android:id="@+id/menu_manage_roads"
+        android:icon="@drawable/ic_manage"
+        android:title="@string/menu_item_manage_roads" />
+    <item android:id="@+id/menu_auto_mode"
+        android:icon="@drawable/ic_auto"
+        android:title="@string/menu_item_auto_mode" />
+    <item android:id="@+id/menu_manual_mode"
+        android:icon="@drawable/ic_manual"
+        android:title="@string/menu_item_manual_mode" />
+</menu>

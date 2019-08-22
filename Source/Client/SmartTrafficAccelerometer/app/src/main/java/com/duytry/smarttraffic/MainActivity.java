@@ -11,6 +11,7 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.graphics.drawable.ColorDrawable;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
@@ -25,10 +26,15 @@ import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentManager;
+import android.support.v4.content.ContextCompat;
+import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.ArrayAdapter;
@@ -100,8 +106,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     private static String dataDirectory;
 
-    private Button btnOpen, btnStop, btnResume, btnSave, btnFinish, btnManage, btnRoadName;
-    private Button btnShockPoint, btnSpeedUp, btnBrakeDown, btnParking, btnStartRecord, btnStopRecord;
+    private Button btnStop, btnResume, btnRoadName;
+    private Button btnShockPoint, btnStartRecord, btnStopRecord;
     private Spinner spinnerSpeed;
     private TextView textViewUserInfo;
 
@@ -116,6 +122,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private Socket mSocket = MySocketFactory.getInstance().getMySocket();
     private Socket mSocket2 = MySocketFactory.getInstance().getMyBackUpSocket();
     Timer autoRecordingTimer = new Timer();
+
+
 
     @Override
     protected void onCreate(final Bundle savedInstanceState) {
@@ -275,25 +283,26 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             }
         });
 
-        //save button
-        btnSave = (Button) findViewById(R.id.btn_push_data);
-        btnSave.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                pushDataToServer2();
-            }
-        });
+//        //save button
+//        btnSave = (Button) findViewById(R.id.btn_push_data);
+//        btnSave.setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View v) {
+//                pushDataToServer2();
+//            }
+//        });
+//
+//        //open button
+//        btnOpen = (Button) findViewById(R.id.open);
+//        btnOpen.setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View v) {
+//                stopSensor();
+//                loadData();
+//            }
+//        });
 
-        //open button
-        btnOpen = (Button) findViewById(R.id.open);
-        btnOpen.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Log.d(TAG, "Button Open clicked");
-                stopSensor();
-                loadData();
-            }
-        });
+
 
         //dropdown select speed
         spinnerSpeed = (Spinner) findViewById(R.id.spinner_speed);
@@ -306,51 +315,49 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         btnShockPoint.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Log.d(TAG, "Button Shock Point clicked");
                 String path = saveData(Common.SHOCK_POINT_ACTION, MODE_MANUAL);
 //                beginSnapPoint(path);
             }
         });
 
-        //speed up button
-        btnSpeedUp = (Button) findViewById(R.id.btn_speed_up);
-        btnSpeedUp.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Log.d(TAG, "Button Speed Up clicked");
-                saveData(Common.SPEED_UP_ACTION, MODE_MANUAL);
-            }
-        });
+//        //speed up button
+//        btnSpeedUp = (Button) findViewById(R.id.btn_speed_up);
+//        btnSpeedUp.setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View v) {
+//                Log.d(TAG, "Button Speed Up clicked");
+//                saveData(Common.SPEED_UP_ACTION, MODE_MANUAL);
+//            }
+//        });
+//
+//        //brake down button
+//        btnBrakeDown = (Button) findViewById(R.id.btn_brake_down);
+//        btnBrakeDown.setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View v) {
+//                Log.d(TAG, "Button Brake down clicked");
+//                saveData(Common.BRAKE_DOWN_ACTION, MODE_MANUAL);
+//            }
+//        });
+//
+//        //parking button
+//        btnParking = (Button) findViewById(R.id.btn_parking);
+//        btnParking.setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View v) {
+//                Log.d(TAG, "Button Parking clicked");
+//                saveData(Common.PARKING_ACTION, MODE_MANUAL);
+//            }
+//        });
 
-        //brake down button
-        btnBrakeDown = (Button) findViewById(R.id.btn_brake_down);
-        btnBrakeDown.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Log.d(TAG, "Button Brake down clicked");
-                saveData(Common.BRAKE_DOWN_ACTION, MODE_MANUAL);
-            }
-        });
-
-        //parking button
-        btnParking = (Button) findViewById(R.id.btn_parking);
-        btnParking.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Log.d(TAG, "Button Parking clicked");
-                saveData(Common.PARKING_ACTION, MODE_MANUAL);
-            }
-        });
-
-        //finish button
-        btnFinish = (Button) findViewById(R.id.btn_finish);
-        btnFinish.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Log.d(TAG, "Button Finish clicked");
-                MainActivity.this.finish();
-            }
-        });
+//        //finish button
+//        btnFinish = (Button) findViewById(R.id.btn_finish);
+//        btnFinish.setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View v) {
+//                finish();
+//            }
+//        });
 
         btnStartRecord = (Button) findViewById(R.id.btn_start_record);
         btnStartRecord.setOnClickListener(new View.OnClickListener() {
@@ -386,14 +393,14 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             }
         });
 
-        //manage button
-        btnManage = (Button) findViewById(R.id.btn_manage);
-        btnManage.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                goToMapsActivity();
-            }
-        });
+//        //manage button
+//        btnManage = (Button) findViewById(R.id.btn_manage);
+//        btnManage.setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View v) {
+//                goToMapsActivity();
+//            }
+//        });
 
         btnRoadName = (Button) findViewById(R.id.btn_road_name);
         btnRoadName.setOnClickListener(new View.OnClickListener() {
@@ -423,20 +430,43 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         updateUserInfo();
         viewDataFragment = (ViewDataFragment) getSupportFragmentManager().findFragmentById(R.id.view_data_fragment);
         viewDataFragment.initChart();
+
+
+    }
+
+    private void openFile(){
+        stopSensor();
+        loadData();
+    }
+
+    private void updateNameInfo(){
+        String name = userInformation.getString(Common.NAME_PREFERENCES_KEY, Common.UNDEFINED);
+        ActionBar actionBar = getSupportActionBar();
+        actionBar.setDisplayShowHomeEnabled(true);
+        actionBar.setBackgroundDrawable(new ColorDrawable(ContextCompat.getColor(this, R.color.alizarin)));
+        actionBar.setIcon(R.mipmap.ic_user);
+        actionBar.setTitle(name);
+    }
+
+    private void updateRoadInfo(){
+        String shortNameRoad = userInformation.getString(Common.SHORT_NAME_ROAD_PREFERENCES_KEY, Common.UNDEFINED);
+        String longNameRoad = userInformation.getString(Common.LONG_NAME_ROAD_PREFERENCES_KEY, Common.UNDEFINED);
+        StringBuilder roadName = new StringBuilder();
+        roadName.append("Road: ");
+        roadName.append(shortNameRoad);
+        if(!TextUtils.equals(shortNameRoad, longNameRoad)){
+            roadName.append(Common.SPACE_CHARACTER);
+            roadName.append(Common.DASH_CHARACTER);
+            roadName.append(Common.SPACE_CHARACTER);
+            roadName.append(longNameRoad);
+        }
+        textViewUserInfo = (TextView) findViewById(R.id.textView_user_info);
+        textViewUserInfo.setText(roadName.toString());
     }
 
     private void updateUserInfo() {
-        String name = userInformation.getString(Common.NAME_PREFERENCES_KEY, Common.UNDEFINED);
-        String road = userInformation.getString(Common.ROAD_PREFERENCES_KEY, Common.UNDEFINED);
-        StringBuilder userInfo = new StringBuilder();
-        userInfo.append(name);
-        userInfo.append(Common.SPACE_CHARACTER);
-        userInfo.append(Common.DASH_CHARACTER);
-        userInfo.append(Common.SPACE_CHARACTER);
-        userInfo.append(road);
-
-        textViewUserInfo = (TextView) findViewById(R.id.textView_user_info);
-        textViewUserInfo.setText(userInfo.toString());
+        updateNameInfo();
+        updateRoadInfo();
     }
 
     private void stopSensor() {
@@ -545,7 +575,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         if (!mSocket.connected()) {
             mSocket.connect();
         }
-        String road = userInformation.getString(Common.ROAD_PREFERENCES_KEY, Common.UNDEFINED);
+        String road = userInformation.getString(Common.SHORT_NAME_ROAD_PREFERENCES_KEY, Common.UNDEFINED);
         mSocket.emit("road", road);
         File folder = new File(dataDirectory);
         String[] files = folder.list();
@@ -564,7 +594,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             mSocket2.connect();
         }
         mSocket2.emit("startSent", "startSent");
-        String road = userInformation.getString(Common.ROAD_PREFERENCES_KEY, Common.UNDEFINED);
+        String road = userInformation.getString(Common.SHORT_NAME_ROAD_PREFERENCES_KEY, Common.UNDEFINED);
         mSocket2.emit("roadname2", road);
         File folder = new File(dataDirectory);
         String[] files = folder.list();
@@ -626,7 +656,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
      * Create folder to save data
      */
     private String makeDirectory() {
-        String road = userInformation.getString(Common.ROAD_PREFERENCES_KEY, Common.UNDEFINED);
+        String road = userInformation.getString(Common.SHORT_NAME_ROAD_PREFERENCES_KEY, Common.UNDEFINED);
         StringBuilder directory = new StringBuilder();
         directory.append(Environment.getExternalStorageDirectory().getAbsolutePath());
         directory.append(File.separator);
@@ -1062,15 +1092,26 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         final View roadInfoView = inflater.inflate(R.layout.display_get_road_information, null);
         final EditText shortNameET = (EditText) roadInfoView.findViewById(R.id.editText_short_name);
         final EditText longNameET = (EditText) roadInfoView.findViewById(R.id.editText_long_name);
-        autoDetectRoadName(shortNameET, longNameET);
         Button autoBtn = (Button) roadInfoView.findViewById(R.id.btn_auto_road);
         Button manualBtn = (Button) roadInfoView.findViewById(R.id.btn_manual_road);
         Button okBtn = (Button) roadInfoView.findViewById(R.id.btn_set_road_done);
 
+        String shortNameRoad = userInformation.getString(Common.SHORT_NAME_ROAD_PREFERENCES_KEY, Common.UNDEFINED);
+        String longNameRoad = userInformation.getString(Common.LONG_NAME_ROAD_PREFERENCES_KEY, Common.UNDEFINED);
+        shortNameET.setText(shortNameRoad);
+        longNameET.setText(longNameRoad);
+        shortNameET.setEnabled(false);
+        longNameET.setEnabled(false);
+
+        builder.setView(roadInfoView);
+        dialogRoadInfo = builder.create();
+        dialogRoadInfo.show();
+
+        final AlertDialog finalDialogRoadInfo = dialogRoadInfo;
         autoBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                autoDetectRoadName(shortNameET, longNameET);
+                autoDetectRoadName(finalDialogRoadInfo);
             }
         });
 
@@ -1088,45 +1129,43 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             }
         });
 
-        builder.setView(roadInfoView);
-        dialogRoadInfo = builder.create();
-        dialogRoadInfo.show();
-
-        final AlertDialog finalDialogRoadInfo = dialogRoadInfo;
         okBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 SharedPreferences.Editor prefEditor = userInformation.edit();
-                prefEditor.putString(Common.ROAD_PREFERENCES_KEY, shortNameET.getText().toString());
+                prefEditor.putString(Common.SHORT_NAME_ROAD_PREFERENCES_KEY, shortNameET.getText().toString());
+                prefEditor.putString(Common.LONG_NAME_ROAD_PREFERENCES_KEY, longNameET.getText().toString());
                 prefEditor.commit();
                 finalDialogRoadInfo.dismiss();
-                updateUserInfo();
+                updateRoadInfo();
             }
         });
     }
 
-    private void autoDetectRoadName(EditText shortName, EditText longName) {
+    private void autoDetectRoadName(AlertDialog dialog) {
         if (mLastKnownLocation != null) {
             String mLatLng = String.valueOf(mLastKnownLocation.getLatitude()) + ", " + mLastKnownLocation.getLongitude();
-            onAddressFinderStart(mLatLng, shortName, longName);
+            onAddressFinderStart(mLatLng, dialog);
         }
-        shortName.setEnabled(false);
-        longName.setEnabled(false);
     }
 
     @Override
-    public void onAddressFinderStart(String latlng, EditText shortName, EditText longName) {
+    public void onAddressFinderStart(String latlng, AlertDialog dialog) {
         try {
-            new AddressFinder(latlng, this, shortName, longName).execute();
+            new AddressFinder(latlng, this, dialog).execute();
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
         }
     }
 
     @Override
-    public void onAddressFinderSuccess(String currentLongNameRoad, String currentShortNameRoad, String address, EditText shortName, EditText longName) {
-        shortName.setText(currentShortNameRoad);
-        longName.setText(currentLongNameRoad);
+    public void onAddressFinderSuccess(String currentLongNameRoad, String currentShortNameRoad, String address, AlertDialog dialog) {
+        SharedPreferences.Editor prefEditor = userInformation.edit();
+        prefEditor.putString(Common.SHORT_NAME_ROAD_PREFERENCES_KEY, currentShortNameRoad);
+        prefEditor.putString(Common.LONG_NAME_ROAD_PREFERENCES_KEY, currentLongNameRoad);
+        prefEditor.commit();
+        dialog.dismiss();
+        updateRoadInfo();
     }
 
     private void startAutoRecording(){
@@ -1135,6 +1174,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             lineData.clear();
         }
         //once a minute
+        autoRecordingTimer = new Timer();
         autoRecordingTimer.schedule(new TimerTask() {
             public void run() {
                 runOnUiThread(new Runnable() {
@@ -1150,5 +1190,57 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private void stopAutoRecording(){
         autoRecordingTimer.cancel();
         saveData(Common.AUTO_ACTION, MODE_AUTO);
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        MenuInflater inflater = getMenuInflater();
+        inflater.inflate(R.menu.menu, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        // Handle item selection
+        switch (item.getItemId()) {
+            case R.id.menu_logout:
+                finish();
+                return true;
+            case R.id.menu_open_file:
+                openFile();
+                return true;
+            case R.id.menu_save_to_server:
+                pushDataToServer2();
+                return true;
+            case R.id.menu_manage_roads:
+                goToMapsActivity();
+                return true;
+            case R.id.menu_auto_mode:
+                changeToAutoMode();
+                return true;
+            case R.id.menu_manual_mode:
+                changeToManualMode();
+                return true;
+            default:
+                return super.onOptionsItemSelected(item);
+        }
+    }
+
+    private void changeToAutoMode(){
+        ActionBar actionBar = getSupportActionBar();
+        actionBar.setBackgroundDrawable(new ColorDrawable(ContextCompat.getColor(this, R.color.peter_river)));
+        this.btnShockPoint.setVisibility(View.GONE);
+        this.btnStartRecord.setVisibility(View.VISIBLE);
+    }
+
+    private void changeToManualMode(){
+        ActionBar actionBar = getSupportActionBar();
+        actionBar.setBackgroundDrawable(new ColorDrawable(ContextCompat.getColor(this, R.color.alizarin)));
+        if(isRecording.getValue() != null && isRecording.getValue()){
+            isRecording.postValue(false);
+        }
+        this.btnStartRecord.setVisibility(View.GONE);
+        this.btnStopRecord.setVisibility(View.GONE);
+        this.btnShockPoint.setVisibility(View.VISIBLE);
     }
 }

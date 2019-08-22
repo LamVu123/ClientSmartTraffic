@@ -1,5 +1,6 @@
 package com.duytry.smarttraffic.modules.AddressModule;
 
+import android.app.AlertDialog;
 import android.os.AsyncTask;
 import android.widget.EditText;
 
@@ -30,14 +31,12 @@ public class AddressFinder {
     private String currentShortNameRoad;
     private String currentLatLong;
     private AddressFinderListener listener;
-    private EditText shortName;
-    private EditText longName;
+    private AlertDialog dialog;
 
-    public AddressFinder(String currentLatLong, AddressFinderListener listener, EditText shortName, EditText longName) {
+    public AddressFinder(String currentLatLong, AddressFinderListener listener, AlertDialog dialog) {
         this.currentLatLong = currentLatLong;
         this.listener = listener;
-        this.shortName = shortName;
-        this.longName = longName;
+        this.dialog = dialog;
     }
 
     //create url with Geocoding API
@@ -110,9 +109,9 @@ public class AddressFinder {
                         }
                     }
                     break;
-                };
+                }
             }
-            listener.onAddressFinderSuccess(currentLongNameRoad,currentShortNameRoad,currentAddress, shortName, longName);
+                listener.onAddressFinderSuccess(currentLongNameRoad,currentShortNameRoad,currentAddress, dialog);
         }
     }
 }

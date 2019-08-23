@@ -9,11 +9,11 @@
     <string name="btn_brake_down">Brake Down</string>
     <string name="btn_parking">Parking</string>
     <string name="textView_speed_label">Speed</string>
-    <string name="btn_finish">Finish</string>
+    <string name="btn_finish">Log out</string>
     <string name="btn_manage">Map</string>
     <string name="btn_back_to_main">Go Back</string>
-    <string name="btn_change_road">Change Road</string>
-    <string name="btn_tool">Tools</string>
+    <string name="btn_change_road">Road List</string>
+    <string name="btn_tool">Road Tools</string>
     <string name="btn_delete_shock_point">Delete</string>
     <string name="btn_view_data">View Data</string>
     <string name="textView_shock_point_tittle">Shock Point</string>
@@ -24,6 +24,14 @@
     <string name="textView_road_name_hint">Road Name</string>
     <string name="btn_save_road">Save</string>
     <string name="btn_back_from_view_data">Back</string>
+    <string name="btn_road_name">Change road</string>
+    <string name="tv_road_short_name">Short Name</string>
+    <string name="tv_road_long_name">Long Name</string>
+    <string name="btn_auto_road">Auto detect</string>
+    <string name="btn_manual_road">Manually edit</string>
+    <string name="btn_set_road_done">OK</string>
+    <string name="btn_start_record">Start Record</string>
+    <string name="btn_stop_record">Stop Record</string>
     <string-array name="speeds_array">
         <item>50km/h</item>
         <item>60km/h</item>
@@ -52,7 +60,7 @@
     <string name="invalid_password">Password must be >5 characters</string>
     <string name="sensor_error_tittle">Error</string>
     <string name="sensor_error_message">Problem with sensors in this device</string>
-    <string name="title_activity_maps">Map</string>
+    <string name="title_activity_maps">Manage Roads</string>
     <string name="title_show_road">Pick a road</string>
     <string name="title_road_empty">Opps</string>
     <string name="message_road_empty">Problem when getting roads from server, please try again</string>
@@ -63,6 +71,11 @@
     <string name="push_data_success_message">Successfully save data to server</string>
     <string name="road_name_not_valid_tittle">Warning</string>
     <string name="road_name_not_valid_message">This road exits, please change other name</string>
-
+    <string name="menu_item_logout">Logout</string>
+    <string name="menu_item_open_file">Open file</string>
+    <string name="menu_item_save_to_server">Upload data to server</string>
+    <string name="menu_item_manage_roads">Manage roads</string>
+    <string name="menu_item_auto_mode">Automatic detect mode</string>
+    <string name="menu_item_manual_mode">Manually detect mode</string>
 
 </resources>

@@ -6,13 +6,15 @@ import java.security.NoSuchAlgorithmException;
 public final class Common {
     public static final String PREFERENCES = "UserInformationPreferences";
     public static final String NAME_PREFERENCES_KEY = "Name";
-    public static final String ROAD_PREFERENCES_KEY = "Road";
+    public static final String SHORT_NAME_ROAD_PREFERENCES_KEY = "Short_Name_Road";
+    public static final String LONG_NAME_ROAD_PREFERENCES_KEY = "Long_Name_Road";
     public static final String UNDEFINED = "UNDEFINED";
 
     public static final String SHOCK_POINT_ACTION = "shockPoint";
     public static final String SPEED_UP_ACTION = "speedUp";
     public static final String BRAKE_DOWN_ACTION = "brakeDown";
     public static final String PARKING_ACTION = "parking";
+    public static final String AUTO_ACTION = "auto";
 
     public static final String UNDERLINED_CHARACTER = "_";
     public static final String SLASH_CHARACTER = "/";

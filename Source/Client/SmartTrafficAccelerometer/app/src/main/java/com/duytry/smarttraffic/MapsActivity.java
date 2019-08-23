@@ -5,32 +5,38 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.arch.lifecycle.MutableLiveData;
 import android.arch.lifecycle.Observer;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Location;
+import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentActivity;
-import android.os.Bundle;
 import android.support.v4.app.FragmentManager;
+import android.support.v7.app.ActionBar;
+import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.MenuItem;
 import android.view.View;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.AdapterView;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ListView;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import com.duytry.smarttraffic.adapter.MyRoadAdapter;
 import com.duytry.smarttraffic.common.Common;
 import com.duytry.smarttraffic.common.MySocketFactory;
-import com.duytry.smarttraffic.fragment.MyDialogFragment;
 import com.duytry.smarttraffic.entity.RoadEntity;
 import com.duytry.smarttraffic.entity.ShockPointEntity;
+import com.duytry.smarttraffic.fragment.MyDialogFragment;
 import com.github.nkzawa.emitter.Emitter;
 import com.github.nkzawa.socketio.client.Socket;
 import com.google.android.gms.location.FusedLocationProviderClient;
@@ -51,13 +57,14 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.Timer;
+import java.util.TimerTask;
 
-public class MapsActivity extends FragmentActivity implements OnMapReadyCallback {
+public class MapsActivity extends AppCompatActivity implements OnMapReadyCallback {
 
     private GoogleMap mMap;
     private FusedLocationProviderClient mFusedLocationProviderClient;
-    private TextView roadInfoTextView;
-    private Button goBackButton, changeRoadButton, toolButton;
+    private Button changeRoadButton, toolButton;
     private ArrayList<RoadEntity> roadList;
     private MutableLiveData<RoadEntity> currentRoad = new MutableLiveData<>();
     private ArrayList<ShockPointEntity> shockPointList;
@@ -74,6 +81,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private static final String GET_ROAD_EVENT_SOCKET = "listRoadResult";
     private static final String GET_POINT_EVENT_SOCKET = "listPointsResult";
     private static final String GET_DATA_EVENT_SOCKET = "dataPoint";
+    private static Timer getRoadTimer;
+    private static boolean isGettingRoadTimer = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -88,20 +97,12 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         roadList = new ArrayList<>();
         shockPointList = new ArrayList<>();
         markerList = new ArrayList<>();
-        getRoadsFromServer();
     }
 
     private void initLayout() {
-        roadInfoTextView = findViewById(R.id.tv_current_road);
-        goBackButton = findViewById(R.id.btn_back_to_main);
-        goBackButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent returnIntent = new Intent();
-                setResult(Activity.RESULT_OK, returnIntent);
-                finish();
-            }
-        });
+        final ActionBar actionBar = getSupportActionBar();
+        actionBar.setDisplayHomeAsUpEnabled(true);
+
 
         changeRoadButton = findViewById(R.id.btn_change_road);
         changeRoadButton.setOnClickListener(new View.OnClickListener() {
@@ -121,17 +122,31 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         currentRoad.observe(this, new Observer<RoadEntity>() {
             @Override
             public void onChanged(@Nullable RoadEntity roadEntity) {
-                if(roadEntity == null){
-                    roadInfoTextView.setText("You are not in any road");
+                StringBuilder actionBarTittle = new StringBuilder("Manage Road");
+                if (roadEntity == null) {
+                    actionBar.setTitle(actionBarTittle.toString());
                     return;
                 }
-                roadInfoTextView.setText("You are in " + roadEntity.getShortName());
+                actionBarTittle.append(" - ");
+                actionBarTittle.append(roadEntity.getShortName());
+                actionBar.setTitle(actionBarTittle.toString());
             }
         });
     }
 
-    private void getRoadsFromServer(){
-        if(!mSocket.connected()){
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
+            case android.R.id.home:
+                onBackPressed();
+                return true;
+            default:
+                return super.onOptionsItemSelected(item);
+        }
+    }
+
+    private void getRoadsFromServer() {
+        if (!mSocket.connected()) {
             mSocket.connect();
         }
         mSocket.emit("listRoad", "listRoad");
@@ -140,12 +155,30 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     private void showRoadsToChange() {
         if (roadList.isEmpty()) {
-           getRoadsFromServer();
-            FragmentManager fragmentManager = getSupportFragmentManager();
-            MyDialogFragment dialogFragment = new MyDialogFragment();
-            dialogFragment.setTittle("Opps");
-            dialogFragment.setMessage("please try again");
-            dialogFragment.show(fragmentManager, "empty road");
+            getRoadsFromServer();
+            AlertDialog.Builder builder = new AlertDialog.Builder(this);
+            LayoutInflater inflater = getLayoutInflater();
+            View view = inflater.inflate(R.layout.layout_loading_alert_dialog, null);
+            builder.setView(view);
+            dialogChooseRoad = builder.create();
+            dialogChooseRoad.show();
+            isGettingRoadTimer = true;
+            getRoadTimer = new Timer();
+            getRoadTimer.schedule(new TimerTask() {
+                public void run() {
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            if(isGettingRoadTimer){
+                                isGettingRoadTimer = false;
+                                dialogChooseRoad.dismiss();
+                                alertNoRoadAvailable();
+                            }
+                            getRoadTimer.cancel();
+                        }
+                    });
+                }
+            }, 15000);
             return;
         }
         RoadEntity[] roads = roadList.toArray(new RoadEntity[roadList.size()]);
@@ -163,10 +196,12 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 showRoadInfo(listItemId);
             }
         });
+
         dialogChooseRoad = new AlertDialog.Builder(MapsActivity.this)
                 .setView(listViewItems)
                 .setTitle(R.string.title_show_road)
                 .show();
+        toolButton.setEnabled(true);
     }
 
     private void showRoadInfo(int roadId) {
@@ -181,8 +216,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         mSocket.on(GET_POINT_EVENT_SOCKET, onGetPoint_Results);
     }
 
-    private void manageRoad(){
-        if(currentRoad.getValue() == null){
+    private void manageRoad() {
+        if (currentRoad.getValue() == null) {
             FragmentManager fragmentManager = getSupportFragmentManager();
             MyDialogFragment dialogFragment = new MyDialogFragment();
             dialogFragment.setTittle("Opps");
@@ -218,18 +253,23 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 saveButton.setVisibility(View.VISIBLE);
                 roadName.setEnabled(true);
                 deleteButton.setEnabled(false);
+                roadName.requestFocus();
+                InputMethodManager imm = (InputMethodManager)
+                        getSystemService(Context.INPUT_METHOD_SERVICE);
+                imm.toggleSoftInput(InputMethodManager.SHOW_FORCED, 0);
             }
         });
         saveButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 boolean isValid = validateNewName(roadName.getText().toString());
-                if(isValid){
+                if (isValid) {
                     editRoad(road, roadName.getText().toString());
                     editButton.setVisibility(View.VISIBLE);
                     saveButton.setVisibility(View.GONE);
                     deleteButton.setEnabled(true);
                     roadName.setEnabled(false);
+                    dialogRoadInfo.dismiss();
                 } else {
                     FragmentManager fragmentManager = getSupportFragmentManager();
                     MyDialogFragment dialogFragment = new MyDialogFragment();
@@ -246,26 +286,26 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     }
 
-    private boolean validateNewName(String newName){
-        if(TextUtils.isEmpty(newName)){
+    private boolean validateNewName(String newName) {
+        if (TextUtils.isEmpty(newName)) {
             return false;
         }
-        for ( RoadEntity road : roadList ) {
-            if(TextUtils.equals(road.getShortName(), newName)){
+        for (RoadEntity road : roadList) {
+            if (TextUtils.equals(road.getShortName(), newName)) {
                 return false;
             }
         }
         return true;
     }
 
-    private void deleteRoad(RoadEntity road){
+    private void deleteRoad(RoadEntity road) {
         mSocket.emit("roadDelete", road.getId());
         currentRoad.postValue(null);
         roadList.remove(road);
-        Toast.makeText(this, "deleted road "+ road.getId(), Toast.LENGTH_LONG).show();
+        Toast.makeText(this, "deleted road " + road.getId(), Toast.LENGTH_LONG).show();
     }
 
-    private boolean editRoad(RoadEntity road, String newName){
+    private boolean editRoad(RoadEntity road, String newName) {
         String json = "{" + "\"idRoad\" : \"" + road.getId() + "\", \"newName\" : " + "\"" + newName + "\"" + "}";
         try {
             JSONObject data = new JSONObject(json);
@@ -276,10 +316,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         roadList.get(roadList.indexOf(currentRoad.getValue())).setShortName(newName);
         this.currentRoad.getValue().setShortName(newName);
         currentRoad.setValue(currentRoad.getValue());
-        Toast.makeText(this, "edit road "+ road.getId() + " to new name " + newName, Toast.LENGTH_LONG).show();
+        Toast.makeText(this, "edit road " + road.getId() + " to new name " + newName, Toast.LENGTH_LONG).show();
         return true;
     }
-
 
 
     private Emitter.Listener onGetRoad_Results = new Emitter.Listener() {
@@ -301,6 +340,12 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                                 roadList.add(roadEntity);
                             }
                             Toast.makeText(MapsActivity.this, "get " + roadList.size() + " road success", Toast.LENGTH_LONG).show();
+                            dialogChooseRoad.dismiss();
+                            if(isGettingRoadTimer) {
+                                getRoadTimer.cancel();
+                                isGettingRoadTimer = false;
+                            }
+                            showRoadsToChange();
                         } else {
                             alertNoRoadAvailable();
                         }
@@ -342,7 +387,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                             }
                             Toast.makeText(MapsActivity.this, "get " + shockPointList.size() + " points success", Toast.LENGTH_LONG).show();
                             displayShockPoint();
-                        } else if(points.length() == 0){
+                        } else if (points.length() == 0) {
                             alertNoPointAvailable();
                         } else {
 
@@ -380,7 +425,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             shockingPointMarker(shockPoint);
         }
         //Move to first shock point
-        if(!shockPointList.isEmpty()){
+        if (!shockPointList.isEmpty()) {
             ShockPointEntity shockPoint = shockPointList.get(0);
             mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(
                     new LatLng(shockPoint.getLatitude(),
@@ -388,7 +433,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }
     }
 
-    private void displayShockPointInfo(final ShockPointEntity shockPoint){
+    private void displayShockPointInfo(final ShockPointEntity shockPoint) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         LayoutInflater inflater = this.getLayoutInflater();
         View shockPointInfoView = inflater.inflate(R.layout.display_shock_point_info, null);
@@ -416,7 +461,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         dialogShockPointInfo.show();
     }
 
-    private void viewData(ShockPointEntity shockPoint){
+    private void viewData(ShockPointEntity shockPoint) {
         dialogShockPointInfo.dismiss();
         mSocket.emit("viewData", shockPoint.getId());
         mSocket.on(GET_DATA_EVENT_SOCKET, onGetData_Results);
@@ -428,7 +473,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         startActivityForResult(intent, Common.VIEW_DATA_REQUEST_CODE);
     }
 
-    private void deleteShockPoint(ShockPointEntity shockPointEntity){
+    private void deleteShockPoint(ShockPointEntity shockPointEntity) {
         mSocket.emit("idPointDelete", shockPointEntity.getId());
         shockPointList.remove(shockPointEntity);
         displayShockPoint();
@@ -496,7 +541,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         mMap.setOnMarkerClickListener(new GoogleMap.OnMarkerClickListener() {
             @Override
             public boolean onMarkerClick(Marker marker) {
-                if(TextUtils.equals(marker.getTitle(), SHOCK_POINT_MARKER_TITTLE)){
+                if (TextUtils.equals(marker.getTitle(), SHOCK_POINT_MARKER_TITTLE)) {
                     ShockPointEntity shockPoint = (ShockPointEntity) marker.getTag();
                     displayShockPointInfo(shockPoint);
                 }
@@ -521,7 +566,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                     if (task.isSuccessful()) {
                         // Set the map's camera position to the current location of the device.
                         Location myLocation = task.getResult();
-                        LatLng currentLocation = new LatLng(myLocation.getLatitude(),myLocation.getLongitude());
+                        LatLng currentLocation = new LatLng(myLocation.getLatitude(), myLocation.getLongitude());
                         mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(
                                 new LatLng(myLocation.getLatitude(),
                                         myLocation.getLongitude()), DEFAULT_ZOOM));
@@ -537,13 +582,13 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     @Override
     protected void onDestroy() {
-        if(mSocket.hasListeners(GET_ROAD_EVENT_SOCKET)){
+        if (mSocket.hasListeners(GET_ROAD_EVENT_SOCKET)) {
             mSocket.off(GET_ROAD_EVENT_SOCKET);
         }
-        if(mSocket.hasListeners(GET_POINT_EVENT_SOCKET)){
+        if (mSocket.hasListeners(GET_POINT_EVENT_SOCKET)) {
             mSocket.off(GET_POINT_EVENT_SOCKET);
         }
-        if(mSocket.hasListeners(GET_DATA_EVENT_SOCKET)){
+        if (mSocket.hasListeners(GET_DATA_EVENT_SOCKET)) {
             mSocket.off(GET_DATA_EVENT_SOCKET);
         }
         super.onDestroy();

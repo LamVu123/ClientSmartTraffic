@@ -57,7 +57,7 @@
     <string name="overwrite_data_warning_message">This road contains old data. Do you want to delete?</string>
     <string name="ok_button">OK</string>
     <string name="keep_button">Keep it</string>
-    <string name="invalid_password">Password must be >5 characters</string>
+    <string name="invalid_password">Password must be >4 characters</string>
     <string name="sensor_error_tittle">Error</string>
     <string name="sensor_error_message">Problem with sensors in this device</string>
     <string name="title_activity_maps">Manage Roads</string>

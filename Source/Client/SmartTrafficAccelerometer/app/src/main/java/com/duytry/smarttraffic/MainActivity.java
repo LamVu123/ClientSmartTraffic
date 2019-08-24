@@ -113,7 +113,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     private SharedPreferences userInformation;
     SimpleDateFormat simpleDateFormat;
-    DecimalFormat df = new DecimalFormat("0.0000");
+//    DecimalFormat df;
 
     private boolean mLocationPermissionGranted;
     private FusedLocationProviderClient mFusedLocationProviderClient;
@@ -431,6 +431,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         viewDataFragment = (ViewDataFragment) getSupportFragmentManager().findFragmentById(R.id.view_data_fragment);
         viewDataFragment.initChart();
 
+        changeToAutoMode();
 
     }
 
@@ -503,11 +504,11 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             lineData = new ArrayList<>();
         }
         float xValue = event.values[0];
-        String xStrValue = df.format(xValue);
+        String xStrValue = String.format(java.util.Locale.US, "%.4f", xValue);
         float yValue = event.values[1];
-        String yStrValue = df.format(yValue);
+        String yStrValue = String.format(java.util.Locale.US, "%.4f", yValue);
         float zValue = event.values[2];
-        String zStrValue = df.format(zValue);
+        String zStrValue = String.format(java.util.Locale.US, "%.4f", zValue);
 
         String latValue;
         String lngValue;
@@ -796,6 +797,9 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                         dataStr.append(System.lineSeparator());
                     }
                     Intent intent = new Intent(this, ViewDataActivity.class);
+                    String path = uri.getPath();
+                    String[] fileName = path.split(Common.SLASH_CHARACTER);
+                    intent.putExtra("fileName", fileName[fileName.length-1]);
                     intent.putExtra("data", dataStr.toString());
                     startActivityForResult(intent, Common.VIEW_DATA_REQUEST_CODE);
                 } catch (IOException e) {

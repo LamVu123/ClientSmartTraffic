@@ -29,7 +29,7 @@ public class ViewDataFragment extends Fragment {
     private LineChart mChartY;
     private LineChart mChartZ;
 
-    private int mVisibleXRangeMaximum = 600;
+    private int mVisibleXRangeMaximum = 1000;
     FragmentActivity listener;
 
     // This event fires 1st, before creation of fragment or any views
@@ -63,7 +63,7 @@ public class ViewDataFragment extends Fragment {
      */
     public void initChart(){
         mChartX = (LineChart) listener.findViewById(R.id.view_chart_x);
-        mChartX.getDescription().setText("Real time accelerometer Data Plot X");
+        mChartX.getDescription().setText("Real time accelerometer data plot X");
         mChartX.setTouchEnabled(true);
         mChartX.setDragEnabled(true);
         mChartX.setScaleEnabled(true);
@@ -72,7 +72,7 @@ public class ViewDataFragment extends Fragment {
         mChartX.setBackgroundColor(Color.WHITE);
 
         mChartY = (LineChart) listener.findViewById(R.id.view_chart_y);
-        mChartY.getDescription().setText("Real time accelerometer Data Plot Y");
+        mChartY.getDescription().setText("Real time accelerometer data plot Y");
         mChartY.setTouchEnabled(true);
 
         mChartY.setDragEnabled(true);
@@ -82,7 +82,7 @@ public class ViewDataFragment extends Fragment {
         mChartY.setBackgroundColor(Color.WHITE);
 
         mChartZ = (LineChart) listener.findViewById(R.id.view_chart_z);
-        mChartZ.getDescription().setText("Real time accelerometer Data Plot Z");
+        mChartZ.getDescription().setText("Real time accelerometer data plot Z");
         mChartZ.setTouchEnabled(true);
         mChartZ.setDragEnabled(true);
         mChartZ.setScaleEnabled(true);
@@ -101,51 +101,54 @@ public class ViewDataFragment extends Fragment {
         mChartZ.setData(dataZ);
 
         Legend legendX = mChartX.getLegend();
-        legendX.setForm(Legend.LegendForm.LINE);
-        legendX.setTextColor(Color.WHITE);
+//        legendX.setForm(Legend.LegendForm.LINE);
+//        legendX.setTextColor(Color.BLACK);
+        legendX.setEnabled(false);
 
         Legend legendY = mChartY.getLegend();
-        legendY.setForm(Legend.LegendForm.LINE);
-        legendY.setTextColor(Color.WHITE);
+//        legendY.setForm(Legend.LegendForm.LINE);
+//        legendY.setTextColor(Color.BLACK);
+        legendY.setEnabled(false);
 
         Legend legendZ = mChartZ.getLegend();
-        legendZ.setForm(Legend.LegendForm.LINE);
-        legendZ.setTextColor(Color.WHITE);
+//        legendZ.setForm(Legend.LegendForm.LINE);
+//        legendZ.setTextColor(Color.BLACK);
+        legendZ.setEnabled(false);
 
         XAxis xl = mChartX.getXAxis();
-        xl.setTextColor(Color.WHITE);
+        xl.setTextColor(Color.BLACK);
         xl.setDrawAxisLine(true);
         xl.setAvoidFirstLastClipping(true);
         xl.setEnabled(true);
 
         xl = mChartY.getXAxis();
-        xl.setTextColor(Color.WHITE);
+        xl.setTextColor(Color.BLACK);
         xl.setDrawAxisLine(true);
         xl.setAvoidFirstLastClipping(true);
         xl.setEnabled(true);
 
         xl = mChartZ.getXAxis();
-        xl.setTextColor(Color.WHITE);
+        xl.setTextColor(Color.BLACK);
         xl.setDrawAxisLine(true);
         xl.setAvoidFirstLastClipping(true);
         xl.setEnabled(true);
 
         YAxis leftAxis = mChartX.getAxisLeft();
-        leftAxis.setTextColor(Color.WHITE);
+        leftAxis.setTextColor(Color.BLACK);
         leftAxis.setDrawGridLines(false);
         leftAxis.setAxisMaximum(10f);
         leftAxis.setAxisMinimum(0f);
         leftAxis.setDrawGridLines(true);
 
         leftAxis = mChartY.getAxisLeft();
-        leftAxis.setTextColor(Color.WHITE);
+        leftAxis.setTextColor(Color.BLACK);
         leftAxis.setDrawGridLines(false);
         leftAxis.setAxisMaximum(10f);
         leftAxis.setAxisMinimum(0f);
         leftAxis.setDrawGridLines(true);
 
         leftAxis = mChartZ.getAxisLeft();
-        leftAxis.setTextColor(Color.WHITE);
+        leftAxis.setTextColor(Color.BLACK);
         leftAxis.setDrawGridLines(false);
         leftAxis.setAxisMaximum(10f);
         leftAxis.setAxisMinimum(0f);
@@ -234,7 +237,7 @@ public class ViewDataFragment extends Fragment {
         set.setHighlightEnabled(false);
         set.setDrawValues(false);
         set.setDrawCircles(false);
-        set.setMode(LineDataSet.Mode.CUBIC_BEZIER);
+        set.setMode(LineDataSet.Mode.LINEAR);
         set.setCubicIntensity(0.2f);
         return set;
     }
@@ -250,6 +253,7 @@ public class ViewDataFragment extends Fragment {
             int pointNumber = Integer.parseInt(lines[0]);
         } catch (NumberFormatException e){
             showDialogFileError();
+            return;
         }
 
         mChartX.clearValues();
@@ -285,8 +289,9 @@ public class ViewDataFragment extends Fragment {
 
         for ( int i = 1; i < lines.length; i++) {
             String[] arrValues = lines[i].split(Common.SPACE_CHARACTER);
-            if(arrValues.length != 8){
+            if(arrValues.length < 7){
                 showDialogFileError();
+                return;
             }
             dataX.addEntry(new Entry(setX.getEntryCount(), Float.parseFloat(arrValues[1])+5), 0);
             dataY.addEntry(new Entry(setY.getEntryCount(), Float.parseFloat(arrValues[2])+5), 0);

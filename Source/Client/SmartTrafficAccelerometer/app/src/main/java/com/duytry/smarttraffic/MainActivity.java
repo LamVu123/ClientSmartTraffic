@@ -70,9 +70,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
-import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -97,6 +95,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     ViewDataFragment viewDataFragment;
     private MutableLiveData<Boolean> isRunning = new MutableLiveData<>();
     private MutableLiveData<Boolean> isRecording = new MutableLiveData<>();
+    private MutableLiveData<String> mode = new MutableLiveData<>();
     private static ArrayList<String> lineData = new ArrayList<>();
     private static ArrayList<String> lineDataTemp = new ArrayList<>();
 //    private static int count = 0;
@@ -288,7 +287,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 //        btnSave.setOnClickListener(new View.OnClickListener() {
 //            @Override
 //            public void onClick(View v) {
-//                pushDataToServer2();
+//                pushAutoDataToServer();
 //            }
 //        });
 //
@@ -426,12 +425,26 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             }
         });
 
+        mode.postValue(MODE_AUTO);
+        mode.observe(this, new Observer<String>() {
+            @Override
+            public void onChanged(@Nullable String mode) {
+               if (TextUtils.isEmpty(mode)){
+                   return;
+               } else if (TextUtils.equals(mode, MODE_AUTO)){
+                   changeToAutoMode();
+               } else if (TextUtils.equals(mode, MODE_MANUAL)) {
+                   changeToManualMode();
+               }
+            }
+        });
+
         //user info
         updateUserInfo();
         viewDataFragment = (ViewDataFragment) getSupportFragmentManager().findFragmentById(R.id.view_data_fragment);
         viewDataFragment.initChart();
 
-        changeToAutoMode();
+
 
     }
 
@@ -572,7 +585,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         dialogFragment.show(fragmentManager, "Save data success");
     }
 
-    private void pushDataToServer() {
+    private void pushManualDataToServer() {
         if (!mSocket.connected()) {
             mSocket.connect();
         }
@@ -590,7 +603,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         showMessageSendFileSuccess();
     }
 
-    private void pushDataToServer2() {
+    private void pushAutoDataToServer() {
         if (!mSocket2.connected()) {
             mSocket2.connect();
         }
@@ -1214,16 +1227,20 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 openFile();
                 return true;
             case R.id.menu_save_to_server:
-                pushDataToServer2();
+                if(mode.getValue() != null && TextUtils.equals(mode.getValue(), MODE_AUTO)){
+                    pushAutoDataToServer();
+                } else if (mode.getValue() != null && TextUtils.equals(mode.getValue(), MODE_MANUAL)){
+                    pushManualDataToServer();
+                }
                 return true;
             case R.id.menu_manage_roads:
                 goToMapsActivity();
                 return true;
             case R.id.menu_auto_mode:
-                changeToAutoMode();
+                mode.postValue(MODE_AUTO);
                 return true;
             case R.id.menu_manual_mode:
-                changeToManualMode();
+                mode.postValue(MODE_MANUAL);
                 return true;
             default:
                 return super.onOptionsItemSelected(item);

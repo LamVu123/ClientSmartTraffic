@@ -117,13 +117,11 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private static final int CONSIDER_DISTANCE = 400;
     private static final int WARNING_DISTANCE = 300;
     private static boolean isWarnningOn = false;
-    //    private static boolean lastCheckShockPointAhead = false;
     private static boolean isMessageDisplayed = false;
     private static String SHOCK_POINT_MARKER_TITTLE = "Shock point";
     private MutableLiveData<Boolean> checkLocationMode = new MutableLiveData<>();
 
     private static ArrayList<ShockPointEntity> shockPointLists;
-    //    private static ArrayList<ShockPointEntity> incomingShockPoints;
     private static ArrayList<Marker> shockPointMarkers = new ArrayList<>();
     private PowerManager pm = null;
     private boolean isDirection = false;
@@ -274,7 +272,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             }
         });
         shockPointLists = new ArrayList<>();
-//        incomingShockPoints = new ArrayList<>();
         checkLocationMode.postValue(true);
         checkLocationMode.observe(this, new Observer<Boolean>() {
             @Override
@@ -319,23 +316,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 builder.show();
             }
         });
-//        List<LatLng> listInputPoints = new ArrayList<>();
-//        listInputPoints.add(new LatLng(21.003226, 105.663500));
-//        listInputPoints.add(new LatLng(21.002905, 105.663350));
-//        listInputPoints.add(new LatLng(21.002865, 105.662840));
-//        listInputPoints.add(new LatLng(21.003053, 105.661649));
-//        listInputPoints.add(new LatLng(21.002858, 105.662652));
-//        listInputPoints.add(new LatLng(21.002833, 105.662258));
-//        listInputPoints.add(new LatLng(21.002750, 105.661569));
-//        onSnapPointFinderStart(listInputPoints);
-//        onShockPointGetterStart("DCT08");
-
-//        ShockPointEntity pointEntity = new ShockPointEntity(1,21.002833,105.662258);
-//        Location location = new Location("start point");
-//        location.setLatitude(21.002858);
-//        location.setLongitude(105.662652);
-//        onDistanceFinderStart(location,pointEntity,10);
-//        showAlertDialogAutoClose("Warning", "Ahead " + WARNING_DISTANCE + "m is a shocking point", 3000);
     }
 
 
@@ -434,8 +414,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             Toast.makeText(this, "Please enter your destination!", Toast.LENGTH_LONG).show();
             return;
         }
-        //Log.d(TAG,"etOrigin: "+origin);
-        //Log.d(TAG,"etDestination: "+destination);
 
         try {
             new DirectionFinder(this, origin, destination).execute();
@@ -525,10 +503,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
         mMap.setMyLocationEnabled(true);
-        // Add a marker in FPT University
-        //LatLng fptUniLocal = new LatLng(21.013138, 105.526876);
-        //mMap.addMarker(new MarkerOptions().position(fptUniLocal).title("Marker in FPT University"));
-        //mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(fptUniLocal, 15));
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
                 && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             return;
@@ -540,7 +514,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 Marker markerPin = mMap.addMarker(new MarkerOptions()
                         .position(latLng));
                 onAddressFinderStart(mlatlng, markerPin);
-//                markerPin.setIcon(BitmapDescriptorFactory.fromResource(R.drawable.ic_markerpin));
             }
         });
 
@@ -569,7 +542,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                                 checkStatusListView = true;
                                 break;
                             case 2:
-                                //String[] roadName = marker.getTitle().split(" - ");
                                 onShockPointGetterStart(marker.getTitle());
                                 break;
                             case 3:
@@ -592,8 +564,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                     return;
                 }
                 AlertDialog.Builder builder = new AlertDialog.Builder(MapsActivity.this);
-                //builder.setTitle("Road: " + marker.getTitle());
-                //builder.setMessage("Address: " + marker.getSnippet());
                 builder.setTitle(marker.getSnippet());
                 CharSequence[] choices = {"Direction from here","Direction to here","Get shock point","Delete Point","Close"};
                 builder.setItems(choices, new DialogInterface.OnClickListener() {
@@ -751,17 +721,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                             }
                         }
                     }
-//                   if(!incomingShockPoints.isEmpty()){
-//                       ShockPointEntity incomingPoint = incomingShockPoints.get(0);
-//                       Location incomingPointLocation = new Location("incoming shock point");
-//                       incomingPointLocation.setLatitude(incomingPoint.getLatitude());
-//                       incomingPointLocation.setLongitude(incomingPoint.getLongitude());
-//                       float incomingDistance =  incomingPointLocation.distanceTo(location);
-//                       if(incomingDistance <= WARNING_DISTANCE){
-//                           showAlertDialogAutoClose("Warning", "Ahead " + WARNING_DISTANCE + "m is a shocking point", 3000);
-//                           incomingShockPoints.remove(incomingPoint);
-//                       }
-//                   }
                 }
 
             }
@@ -793,11 +752,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     };
 
     private void showAlertDialogAutoClose(String tittle, String message, final int time) {
-
-//        String uriPath = "android.resource://"+getPackageName()+"/raw/alert1.mp3";
-//        Uri notification = MediaStore.Audio.Media.getContentUriForPath(uriPath);;
-//        final Ringtone r = RingtoneManager.getRingtone(getApplicationContext(), notification);
-//        r.play();
 
         final MediaPlayer[] mp;
 
@@ -901,7 +855,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         if (markerPin != null) {
             markerPin.remove();
         }
-        //marker.setTitle(currentShortNameRoad + " - " + currentLongNameRoad);
         marker.setTitle(currentShortNameRoad);
         marker.setSnippet(address);
         marker.showInfoWindow();

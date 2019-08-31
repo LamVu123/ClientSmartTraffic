@@ -182,14 +182,16 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         //init layout
         initLayout();
 
-        //create folder to save data
-        this.dataDirectory = makeDirectory();
-        checkOldData();
+        //check out current road
+        checkOutRoad();
 
-        //init graph
-//        initChart();
 
 //        startDate = new Date();
+    }
+
+    private void checkOutRoad(){
+        this.dataDirectory = makeDirectory();
+        checkOldData();
     }
 
     private void checkOldData() {
@@ -476,6 +478,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         }
         textViewUserInfo = (TextView) findViewById(R.id.textView_user_info);
         textViewUserInfo.setText(roadName.toString());
+        checkOutRoad();
     }
 
     private void updateUserInfo() {

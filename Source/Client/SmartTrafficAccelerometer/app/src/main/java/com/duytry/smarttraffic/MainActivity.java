@@ -1049,25 +1049,26 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     @Override
     public void onSnapPointFinderSuccess(List<LatLng> listOutputPoints, String fileName, String data, String mode) {
+        int listSize = listOutputPoints.size();
         File file = new File(dataDirectory + File.separator + fileName);
         StringBuilder dataBuider = new StringBuilder(data);
         String[] dataLines = data.split(System.lineSeparator());
-        int count = -1;
-        double oldLatitude = -1;
-        double oldLongitude = -1;
+        int count = 0;
         for (int i = 1; i < dataLines.length; i++) {
             String[] arrValues = dataLines[i].split(Common.SPACE_CHARACTER);
             double latitude = Double.valueOf(arrValues[4]);
             double longitude = Double.valueOf(arrValues[5]);
-            if (latitude == oldLatitude && oldLongitude == longitude) {
-            } else {
-                oldLatitude = latitude;
-                oldLongitude = longitude;
-                count++;
-            }
-            if(count < listOutputPoints.size() - 1){
-                dataLines[i].replace(arrValues[4], String.valueOf((double) Math.round(listOutputPoints.get(count).latitude * 100000) / 100000));
-                dataLines[i].replace(arrValues[5], String.valueOf((double) Math.round(listOutputPoints.get(count).longitude * 100000) / 100000));
+            if(count < listSize){
+                Location originLocation = new Location("origin location");
+                originLocation.setLatitude(Double.parseDouble(arrValues[4]));
+                originLocation.setLongitude(Double.parseDouble(arrValues[5]));
+                count = findNearestPointAfterSnap(listOutputPoints, originLocation, count);
+                if(count != -1){
+                    dataLines[i] = dataLines[i].replace(arrValues[4], String.valueOf((double) Math.round(listOutputPoints.get(count).latitude * 100000) / 100000));
+                    dataLines[i] = dataLines[i].replace(arrValues[5], String.valueOf((double) Math.round(listOutputPoints.get(count).longitude * 100000) / 100000));
+                } else {
+                    Log.e("Snap Point", "Error when snap point");
+                }
             }
         }
         try (BufferedWriter bw = new BufferedWriter(new FileWriter(file, false))) {
@@ -1099,6 +1100,30 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         } catch (IOException | ArrayIndexOutOfBoundsException e) {
             Toast.makeText(this, Common.ERROR_MESSAGE, Toast.LENGTH_LONG).show();
             e.printStackTrace();
+        }
+    }
+
+    private int findNearestPointAfterSnap(List<LatLng> listOutputPoints, Location originLocation, int pointCount){
+        if(pointCount <= listOutputPoints.size() - 1){
+            if(pointCount == 63){
+                Log.e("loggg", "");
+            }
+            Location tempLocation1 = new Location("compare location");
+            tempLocation1.setLatitude(listOutputPoints.get(pointCount).latitude);
+            tempLocation1.setLongitude(listOutputPoints.get(pointCount).longitude);
+            if(pointCount <= listOutputPoints.size() - 2){
+                Location tempLocation2 = new Location("compare location");
+                tempLocation2.setLatitude(listOutputPoints.get(pointCount + 1).latitude);
+                tempLocation2.setLongitude(listOutputPoints.get(pointCount + 1).longitude);
+                double distance1 = originLocation.distanceTo(tempLocation1);
+                double distance2 = originLocation.distanceTo(tempLocation2);
+                if(distance1 > distance2){
+                    return findNearestPointAfterSnap(listOutputPoints, originLocation, ++pointCount);
+                }
+            }
+            return pointCount;
+        } else {
+            return -1;
         }
     }
 

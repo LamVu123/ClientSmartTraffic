@@ -717,6 +717,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                             pointLocation.setLongitude(shockPoint.getLongitude());
                             float distanceInMeters = pointLocation.distanceTo(location);
                             if (distanceInMeters <= CONSIDER_DISTANCE) {
+                                shockPointLists.remove(shockPoint);
                                 onDistanceFinderStart(mLastKnownLocation, shockPoint, distanceInMeters);
                             }
                         }
@@ -960,7 +961,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         shockPointSortingTimer = new Timer();
         shockPointSortingTimer.schedule(new TimerTask() {
             public void run() {
-                Collections.sort(shockPointList, new ShockPointEntity.SortByDistance(mLastKnownLocation));
+                Collections.sort(shockPointLists, new ShockPointEntity.SortByDistance(mLastKnownLocation));
 //                Toast.makeText(MapsActivity.this, "Last know location: " + mLastKnownLocation.getLatitude() + ", " +mLastKnownLocation.getLongitude(), Toast.LENGTH_LONG).show();
             }
         }, 20000, 20000);
@@ -970,7 +971,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         for (int i = 0; i < shockPointMarkers.size(); i++) {
             shockPointMarkers.get(i).remove();
         }
-        for (ShockPointEntity shockPoint : shockPointList) {
+        for (ShockPointEntity shockPoint : shockPointLists) {
             shockingPointMarker(shockPoint);
         }
         checkLocationMode.postValue(false);

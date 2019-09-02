@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<android.support.constraint.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:map="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
@@ -9,9 +9,9 @@
     android:weightSum="2">
 
     <LinearLayout
+        android:id="@+id/linearLayout"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:layout_weight="0.18">
+        android:layout_height="match_parent">
 
         <fragment
             android:id="@+id/map"
@@ -21,35 +21,45 @@
             tools:context=".MapsActivity" />
     </LinearLayout>
 
-    <LinearLayout
+    <android.support.constraint.ConstraintLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_height="wrap_content"
         android:background="@drawable/maps_button_layout"
-        android:layout_marginTop="5dp"
-        android:layout_marginBottom="5dp"
-        android:layout_weight="1.82"
-        android:weightSum="2">
+        android:weightSum="2"
+        map:layout_constraintBottom_toBottomOf="parent"
+        map:layout_constraintEnd_toEndOf="parent"
+        map:layout_constraintStart_toStartOf="parent">
 
         <Button
             android:id="@+id/btn_change_road"
             style="@style/white_text"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:layout_marginRight="8dp"
+            android:layout_marginBottom="8dp"
             android:background="@drawable/maps_button"
             android:text="@string/btn_change_road"
-            android:layout_weight="1"
-            />
+            map:layout_constraintBottom_toBottomOf="parent"
+            map:layout_constraintLeft_toLeftOf="parent"
+            map:layout_constraintRight_toLeftOf="@id/btn_tool"
+            map:layout_constraintTop_toTopOf="parent" />
 
         <Button
             android:id="@+id/btn_tool"
             style="@style/white_text"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
+            android:layout_marginLeft="8dp"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="8dp"
             android:background="@drawable/maps_button"
             android:enabled="false"
             android:text="@string/btn_tool"
             android:visibility="visible"
-             />
-    </LinearLayout>
-</LinearLayout>
+            map:layout_constraintBottom_toBottomOf="parent"
+            map:layout_constraintLeft_toRightOf="@id/btn_change_road"
+            map:layout_constraintRight_toRightOf="parent"
+            map:layout_constraintTop_toTopOf="parent" />
+    </android.support.constraint.ConstraintLayout>
+</android.support.constraint.ConstraintLayout>
